@@ -3,6 +3,7 @@ import Combine
 
 struct ChatView: View {
     @ObservedObject var chatSession: ChatSession
+    @EnvironmentObject var viewModel: ChatSessionsViewModel
     @State private var message: String = ""
 
     @Namespace private var bottomID
@@ -59,6 +60,8 @@ struct ChatView: View {
         withAnimation {
             chatSession.messages.append(userMsg)
         }
+        chatSession.lastActivity = Date()
+        viewModel.refreshTrigger.toggle()
 
         let userMessageCount = chatSession.messages.filter { $0.sender == .user }.count
         if userMessageCount == 1 {
@@ -76,6 +79,8 @@ struct ChatView: View {
         withAnimation {
             chatSession.messages.append(assistantMessage)
         }
+        chatSession.lastActivity = Date()
+        viewModel.refreshTrigger.toggle()
 
         Task {
             do {
@@ -98,6 +103,8 @@ struct ChatView: View {
                             }
                         }
                         pendingChunk = ""
+                        chatSession.lastActivity = Date()
+                        viewModel.refreshTrigger.toggle()
                     }
                 }
 

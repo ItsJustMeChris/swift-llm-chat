@@ -21,6 +21,7 @@ struct RootView: View {
             NavigationStack {
                 if let selectedChat = viewModel.selectedChat() {
                     ChatView(chatSession: selectedChat)
+                        .environmentObject(viewModel)
                         .id(selectedChat.id)
                         .toolbar {
                             ToolbarItem(placement: .navigation) {

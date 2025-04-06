@@ -6,7 +6,7 @@ struct SidebarView: View {
     var body: some View {
         List(selection: $viewModel.selectedChatID) {
             Section(header: Text("Chats")) {
-                ForEach(viewModel.chats) { chat in
+                ForEach(viewModel.chats.sorted { $0.lastActivity > $1.lastActivity }) { chat in
                     ChatRow(chat: chat)
                         .tag(chat.id as UUID?)
                 }

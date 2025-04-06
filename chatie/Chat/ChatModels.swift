@@ -40,11 +40,13 @@ class ChatSession: ObservableObject, Identifiable {
     @Published var model: ModelOption? = nil
     @Published var title: String = "Chat"
     @Published var messages: [ChatMessageViewModel] = []
+    @Published var lastActivity: Date = Date()
 }
 
 class ChatSessionsViewModel: ObservableObject {
     @Published var chats: [ChatSession] = [ChatSession()]
     @Published var selectedChatID: UUID?
+    @Published var refreshTrigger: Bool = false
 
     init() {
         selectedChatID = chats.first?.id
