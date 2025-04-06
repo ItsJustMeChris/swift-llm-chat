@@ -155,6 +155,8 @@ struct GrowingTextView: NSViewRepresentable {
 struct ChatInputBar: View {
     @Binding var message: String
     var onSend: () -> Void
+    var onStop: (() -> Void)?
+    @Binding var isStreaming: Bool
     @State private var textViewHeight: CGFloat = 30
 
     var body: some View {
@@ -178,7 +180,17 @@ struct ChatInputBar: View {
                 Spacer()
                 HStack(spacing: 8) {
                     FlatIcon(systemName: "mic")
-                    IconButton(systemName: "arrow.up", iconColor: .black, backgroundColor: .white)
+                    IconButton(
+                        systemName: isStreaming ? "stop.fill" : "arrow.up",
+                        action: {
+                            if isStreaming {
+                                onStop?()
+                            } else {
+                                onSend()
+                            }
+                        }, iconColor: isStreaming ? .red : .black,
+                        backgroundColor: isStreaming ? .clear : .white
+                    )
                 }
             }
         }

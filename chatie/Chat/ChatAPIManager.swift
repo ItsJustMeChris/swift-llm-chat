@@ -1,9 +1,7 @@
 import Foundation
 
 func streamAssistantResponse(for chatSession: ChatSession) async throws -> AsyncThrowingStream<String, Error> {
-
     guard let apiKey = UserDefaults.standard.string(forKey: "openRouterApiKey"), !apiKey.isEmpty else {
-
         throw NSError(domain: "ChatAPIManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "OpenRouter API Key not configured or is empty. Please set it in Settings."])
     }
     let client = OpenAIChat(apiKey: apiKey, baseURL: URL(string: "https://openrouter.ai/api")!)
@@ -27,6 +25,12 @@ func streamAssistantResponse(for chatSession: ChatSession) async throws -> Async
         Task {
             do {
                 for try await chunk in streamChunks {
+                    if let choice = chunk.choices?.first, let finishReason = choice.finishReason, !finishReason.isEmpty {
+                        if let delta = choice.delta, let content = delta.content, !content.isEmpty {
+                            continuation.yield(content)
+                        }
+                        break
+                    }
                     if let delta = chunk.choices?.first?.delta,
                        let content = delta.content {
                         continuation.yield(content)
@@ -41,9 +45,7 @@ func streamAssistantResponse(for chatSession: ChatSession) async throws -> Async
 }
 
 func streamChatName(for chatSession: ChatSession) async throws -> AsyncThrowingStream<String, Error> {
-
     guard let apiKey = UserDefaults.standard.string(forKey: "openRouterApiKey"), !apiKey.isEmpty else {
-
         throw NSError(domain: "ChatAPIManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "OpenRouter API Key not configured or is empty. Please set it in Settings."])
     }
     let client = OpenAIChat(apiKey: apiKey, baseURL: URL(string: "https://openrouter.ai/api")!)
@@ -69,6 +71,16 @@ func streamChatName(for chatSession: ChatSession) async throws -> AsyncThrowingS
             do {
                 var titleText = ""
                 for try await chunk in streamChunks {
+                    if let choice = chunk.choices?.first, let finishReason = choice.finishReason, !finishReason.isEmpty {
+                        if let delta = choice.delta, let content = delta.content, !content.isEmpty {
+                            titleText += content
+                            Task { @MainActor in
+                                chatSession.title = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
+                            }
+                            continuation.yield(content)
+                        }
+                        break
+                    }
                     if let delta = chunk.choices?.first?.delta,
                        let content = delta.content {
                         titleText += content

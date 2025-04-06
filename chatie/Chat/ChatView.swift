@@ -5,48 +5,52 @@ struct ChatView: View {
     @ObservedObject var chatSession: ChatSession
     @EnvironmentObject var viewModel: ChatSessionsViewModel
     @State private var message: String = ""
+    @State private var isStreaming: Bool = false
+    @State private var streamingTask: Task<Void, Never>? = nil
 
     @Namespace private var bottomID
 
     var body: some View {
         GeometryReader { geometry in
             HStack {
-                Spacer() 
-                VStack(spacing: 0) { 
+                Spacer()
+                VStack(spacing: 0) {
                     ScrollViewReader { scrollViewProxy in
                         ScrollView {
-                            LazyVStack(spacing: 0) { 
+                            LazyVStack(spacing: 0) {
                                 ForEach(chatSession.messages) { msg in
                                     ChatBubble(message: msg, parentWidth: min(1000, geometry.size.width - 32))
                                         .id(msg.id)
-                                        .padding(.vertical, 4) 
+                                        .padding(.vertical, 4)
                                 }
-                                Color.clear.frame(height: 1).id(bottomID) 
+                                Color.clear.frame(height: 1).id(bottomID)
                             }
-                            .padding(.horizontal) 
+                            .padding(.horizontal)
                         }
                         .onChange(of: chatSession.messages.count) { _ in
-
                             withAnimation {
                                 scrollViewProxy.scrollTo(bottomID, anchor: .bottom)
                             }
                         }
                         .onAppear {
-
-                             scrollViewProxy.scrollTo(bottomID, anchor: .bottom)
+                            scrollViewProxy.scrollTo(bottomID, anchor: .bottom)
                         }
                     }
-
-                    ChatInputBar(message: $message, onSend: sendMessage)
-                        .padding(.top, 4) 
-                        .padding(.bottom, 8) 
-                        .padding(.horizontal) 
+                    
+                    ChatInputBar(
+                        message: $message,
+                        onSend: sendMessage,
+                        onStop: stopStreaming,
+                        isStreaming: $isStreaming
+                    )
+                    .padding(.top, 4)
+                    .padding(.bottom, 8)
+                    .padding(.horizontal)
                 }
-                .frame(maxWidth: 1000) 
-                Spacer() 
+                .frame(maxWidth: 1000)
+                Spacer()
             }
-
-            .background(Color(NSColor.windowBackgroundColor).edgesIgnoringSafeArea(.all)) 
+            .background(Color(NSColor.windowBackgroundColor).edgesIgnoringSafeArea(.all))
         }
     }
 
@@ -82,7 +86,8 @@ struct ChatView: View {
         chatSession.lastActivity = Date()
         viewModel.refreshTrigger.toggle()
 
-        Task {
+        isStreaming = true
+        streamingTask = Task {
             do {
                 let stream = try await streamAssistantResponse(for: chatSession)
                 let threshold: TimeInterval = 0.1
@@ -118,6 +123,7 @@ struct ChatView: View {
                 }
 
                 for try await partialText in stream {
+                    if Task.isCancelled { break }
                     pendingChunk += partialText
                     let now = Date()
                     let timeSinceLast = now.timeIntervalSince(lastUpdate)
@@ -139,6 +145,16 @@ struct ChatView: View {
             } catch {
                 print("Streaming error: \(error)")
             }
+            await MainActor.run {
+                isStreaming = false
+                streamingTask = nil
+            }
         }
+    }
+
+    private func stopStreaming() {
+        streamingTask?.cancel()
+        streamingTask = nil
+        isStreaming = false
     }
 }
