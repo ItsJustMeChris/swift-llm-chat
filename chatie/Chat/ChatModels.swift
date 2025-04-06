@@ -9,11 +9,31 @@ enum Sender {
 class ChatMessageViewModel: ObservableObject, Identifiable {
     let id = UUID()
     let sender: Sender
-    @Published var text: String
-
-    init(sender: Sender, text: String = "") {
+    // Finalized text blocks.
+    @Published var textBlocks: [String] = []
+    // The currently open (incomplete) text block.
+    @Published var openBlock: String = ""
+    
+    // The full text is the joined finalized blocks plus any open block.
+    var text: String {
+        let combined = textBlocks + (openBlock.isEmpty ? [] : [openBlock])
+        return combined.joined(separator: "\n")
+    }
+    
+    init(sender: Sender, initialText: String = "") {
         self.sender = sender
-        self.text = text
+        if !initialText.isEmpty {
+            // If initial text is provided, treat it as finalized.
+            self.textBlocks = [initialText]
+        }
+    }
+    
+    // Call this when streaming is finished to finalize any open text.
+    func finalizeOpenBlock() {
+        if !openBlock.isEmpty {
+            textBlocks.append(openBlock)
+            openBlock = ""
+        }
     }
 }
 

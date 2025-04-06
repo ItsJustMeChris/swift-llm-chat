@@ -22,7 +22,8 @@ class IntrinsicScrollView: NSScrollView {
 }
 
 struct OptimizedStreamedText: NSViewRepresentable {
-    @Binding var text: String
+    // We now use a plain string that is computed from textBlocks and openBlock.
+    let text: String
     var availableWidth: CGFloat
 
     func makeNSView(context: Context) -> IntrinsicScrollView {
@@ -70,7 +71,7 @@ struct ChatBubble: View {
     var body: some View {
         HStack {
             if message.sender == .assistant {
-                OptimizedStreamedText(text: $message.text, availableWidth: parentWidth - 24)
+                OptimizedStreamedText(text: message.text, availableWidth: parentWidth - 24)
                     .padding(12)
                     .frame(maxWidth: parentWidth, alignment: .leading)
                     .background(Color(NSColor.windowBackgroundColor))
