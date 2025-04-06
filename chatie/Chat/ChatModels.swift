@@ -19,6 +19,7 @@ class ChatMessageViewModel: ObservableObject, Identifiable {
 
 class ChatSession: ObservableObject, Identifiable {
     let id = UUID()
+    @Published var model: ModelOption? = nil
     @Published var title: String = "Chat"
     @Published var messages: [ChatMessageViewModel] = []
 }

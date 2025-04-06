@@ -12,7 +12,7 @@ func streamAssistantResponse(for chatSession: ChatSession) async throws -> Async
     }
     
     let request = ChatCompletionRequest(
-        model: "openrouter/quasar-alpha",
+        model: chatSession.model?.id ?? "openrouter/quasar-alpha",
         messages: messages,
         stream: true
     )
@@ -23,7 +23,8 @@ func streamAssistantResponse(for chatSession: ChatSession) async throws -> Async
         Task {
             do {
                 for try await chunk in streamChunks {
-                    if let delta = chunk.choices?.first?.delta, let content = delta.content {
+                    if let delta = chunk.choices?.first?.delta,
+                       let content = delta.content {
                         continuation.yield(content)
                     }
                 }
@@ -48,7 +49,7 @@ func streamChatName(for chatSession: ChatSession) async throws -> AsyncThrowingS
     ]
     
     let request = ChatCompletionRequest(
-        model: "openrouter/quasar-alpha",
+        model: chatSession.model?.id ?? "openrouter/quasar-alpha",
         messages: messages,
         stream: true
     )
@@ -60,7 +61,8 @@ func streamChatName(for chatSession: ChatSession) async throws -> AsyncThrowingS
             do {
                 var titleText = ""
                 for try await chunk in streamChunks {
-                    if let delta = chunk.choices?.first?.delta, let content = delta.content {
+                    if let delta = chunk.choices?.first?.delta,
+                       let content = delta.content {
                         titleText += content
                         Task { @MainActor in
                             chatSession.title = titleText.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -6,5 +6,6 @@ struct sidebarifyApp: App {
         WindowGroup {
             RootView()
         }
+        .windowToolbarStyle(UnifiedWindowToolbarStyle())
     }
 }
