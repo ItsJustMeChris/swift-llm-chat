@@ -35,7 +35,7 @@ struct ChatView: View {
                             scrollToBottom = true
                         }
                     }
-                    
+
                     ChatInputBar(message: $message, onSend: sendMessage)
                         .padding(.bottom, 8)
                         .padding(.horizontal, 8)
@@ -47,20 +47,18 @@ struct ChatView: View {
             .background(Color(NSColor.windowBackgroundColor).edgesIgnoringSafeArea(.all))
         }
     }
-    
+
     private func sendMessage() {
         guard !message.isEmpty else { return }
-        
+
         let messageText = message
         message = ""
-        
-        // Append the user’s message.
+
         let userMsg = ChatMessageViewModel(sender: .user, initialText: messageText)
         withAnimation {
             chatSession.messages.append(userMsg)
         }
-        
-        // Optionally trigger the naming stream on the first user message.
+
         let userMessageCount = chatSession.messages.filter { $0.sender == .user }.count
         if userMessageCount == 1 {
             Task {
@@ -72,36 +70,34 @@ struct ChatView: View {
                 }
             }
         }
-        
-        // Create and append an empty assistant message.
+
         let assistantMessage = ChatMessageViewModel(sender: .assistant)
         withAnimation {
             chatSession.messages.append(assistantMessage)
         }
-        
-        // New streaming logic using an open block.
+
         Task {
             do {
                 let stream = try await streamAssistantResponse(for: chatSession)
                 for try await partialText in stream {
                     await MainActor.run {
-                        // Append the new fragment to the open block.
+
                         assistantMessage.openBlock += partialText
-                        // When a newline is detected, split the open block.
+
                         if assistantMessage.openBlock.contains("\n") {
                             let components = assistantMessage.openBlock.split(separator: "\n", omittingEmptySubsequences: false)
-                            // All but the last component are complete lines.
+
                             if components.count > 1 {
                                 for comp in components.dropLast() {
                                     assistantMessage.textBlocks.append(String(comp))
                                 }
-                                // The last component is the new (still open) text.
+
                                 assistantMessage.openBlock = String(components.last ?? "")
                             }
                         }
                     }
                 }
-                // Finalize any remaining open text.
+
                 await MainActor.run {
                     assistantMessage.finalizeOpenBlock()
                 }

@@ -1,66 +1,82 @@
 import SwiftUI
-import AppKit
 
-class IntrinsicTextView: NSTextView {
-    override var intrinsicContentSize: NSSize {
-        guard let layoutManager = layoutManager, let textContainer = textContainer else {
-            return super.intrinsicContentSize
-        }
-        layoutManager.ensureLayout(for: textContainer)
-        let usedRect = layoutManager.usedRect(for: textContainer)
-        return NSSize(width: textContainer.containerSize.width, height: usedRect.height)
-    }
-}
-
-class IntrinsicScrollView: NSScrollView {
-    override var intrinsicContentSize: NSSize {
-        if let documentView = documentView {
-            return documentView.intrinsicContentSize
-        }
-        return super.intrinsicContentSize
-    }
-}
-
-struct OptimizedStreamedText: NSViewRepresentable {
-    // We now use a plain string that is computed from textBlocks and openBlock.
+struct FadeInTextWithDelay: View {
     let text: String
-    var availableWidth: CGFloat
+    let delay: Double
+    @State private var hasAnimated: Bool = false
 
-    func makeNSView(context: Context) -> IntrinsicScrollView {
-        let scrollView = IntrinsicScrollView()
-        scrollView.drawsBackground = false
-        scrollView.hasVerticalScroller = false
-        scrollView.hasHorizontalScroller = false
-        
-        let textView = IntrinsicTextView(frame: .zero)
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.drawsBackground = false
-        textView.font = NSFont.systemFont(ofSize: 14)
-        textView.textContainerInset = .zero
-        textView.textContainer?.lineFragmentPadding = 0
-        textView.textContainer?.widthTracksTextView = true
-        textView.isHorizontallyResizable = false
-        textView.isVerticallyResizable = true
-        textView.autoresizingMask = [.width]
-        
-        scrollView.documentView = textView
-        return scrollView
+    var body: some View {
+        Text(text)
+            .opacity(hasAnimated ? 1 : 0)
+            .onAppear {
+                if !hasAnimated {
+                    withAnimation(Animation.easeIn(duration: 0.3).delay(delay)) {
+                        hasAnimated = true
+                    }
+                }
+            }
+    }
+}
+
+struct AnimatedTokenLine: View {
+    let line: String
+
+    private var tokens: [String] {
+        line.split(separator: " ", omittingEmptySubsequences: false).map { String($0) }
     }
 
-    func updateNSView(_ nsView: IntrinsicScrollView, context: Context) {
-        guard let textView = nsView.documentView as? IntrinsicTextView else { return }
-        textView.string = text
-        
-        let currentWidth = availableWidth
-        textView.textContainer?.containerSize = NSSize(width: currentWidth, height: .greatestFiniteMagnitude)
-        textView.textContainer?.widthTracksTextView = true
+    private var groupedTokens: [[String]] {
+        let groupSize = tokens.count > 20 ? 20 : 5
+        return stride(from: 0, to: tokens.count, by: groupSize).map { start in
+            Array(tokens[start..<min(start + groupSize, tokens.count)])
+        }
+    }
 
-        textView.layoutManager?.ensureLayout(for: textView.textContainer!)
-        let newSize = textView.intrinsicContentSize
-        textView.frame = NSRect(x: 0, y: 0, width: currentWidth, height: newSize.height)
-        
-        nsView.invalidateIntrinsicContentSize()
+    var body: some View {
+        LazyHStack(spacing: 0) {
+
+            ForEach(Array(groupedTokens.enumerated()), id: \.offset) { groupIndex, tokenGroup in
+                HStack(spacing: 0) {
+
+                    ForEach(Array(tokenGroup.enumerated()), id: \.offset) { tokenIndex, token in
+                        FadeInTextWithDelay(
+                            text: token + " ",
+                            delay: Double(groupIndex) * 0.15 + Double(tokenIndex) * 0.05
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct StaticTokenLine: View {
+    let line: String
+    var body: some View {
+        Text(line)
+    }
+}
+
+struct AnimatedStreamedText: View {
+    let textBlocks: [String]
+    let openBlock: String
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: 4) {
+
+            ForEach(textBlocks.indices.dropLast(), id: \.self) { index in
+                StaticTokenLine(line: textBlocks[index])
+            }
+
+            if let last = textBlocks.last {
+                AnimatedTokenLine(line: last)
+            }
+
+            if !openBlock.isEmpty {
+                AnimatedTokenLine(line: openBlock)
+            }
+        }
+        .drawingGroup()
     }
 }
 
@@ -71,7 +87,7 @@ struct ChatBubble: View {
     var body: some View {
         HStack {
             if message.sender == .assistant {
-                OptimizedStreamedText(text: message.text, availableWidth: parentWidth - 24)
+                AnimatedStreamedText(textBlocks: message.textBlocks, openBlock: message.openBlock)
                     .padding(12)
                     .frame(maxWidth: parentWidth, alignment: .leading)
                     .background(Color(NSColor.windowBackgroundColor))
