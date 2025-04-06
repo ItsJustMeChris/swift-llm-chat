@@ -8,123 +8,126 @@ struct ConfigurationView: View {
     // Model Management Section
     @EnvironmentObject var modelManager: ModelManager
     @State private var showingAddModelSheet = false
-    @State private var modelToEdit: ModelOption? = nil
-    @State private var selection = Set<ModelOption.ID>() // For Table selection
+    @State private var modelToEdit: ModelOption? = nil // Keep for potential future use
+    @State private var selection = Set<ModelOption.ID>()
 
     var body: some View {
-        // Use VStack with padding for overall structure, Form for sections
-        VStack {
-            Form {
-                Section("API Configuration") { // Use String directly for Section header
-                    apiKeySection
-                }
-
-                Section("Model Management") {
-                    modelTableSection // Renamed from modelListSection
-                }
+        // Use Form directly as the main container for standard settings padding/spacing
+        Form {
+            Section("API Configuration") {
+                apiKeySection
             }
-            // Add a bottom bar for controls
-            HStack {
-                Button {
-                    showingAddModelSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .help("Add a new model")
 
-                Button {
-                    removeSelectedModels()
-                } label: {
-                    Image(systemName: "minus")
-                }
-                .disabled(selection.isEmpty) // Disable if nothing is selected
-                .help("Remove selected model(s)")
-                
-                Spacer() // Pushes buttons to the left
+            Section("Model Management") {
+                // Embed the Table and buttons within the section
+                modelTableSection
+                modelActionButtons // Add buttons below the table
             }
-            .padding([.horizontal, .bottom])
         }
-        .frame(minWidth: 450, minHeight: 350) // Adjusted size
+        // Apply padding to the Form itself for overall window spacing
+        .padding()
+        .frame(minWidth: 480, minHeight: 350) // Slightly wider for table columns
         .sheet(isPresented: $showingAddModelSheet) {
-            AddModelView() // Keep AddModelView as is for now
-                // Pass the manager to the sheet if it needs to add directly
+            // Present AddModelView centered, with environment object
+            AddModelView()
                 .environmentObject(modelManager)
         }
-        // Optional: Add sheet for editing existing models if needed
-        // .sheet(item: $modelToEdit) { model in
-        //     EditModelView(model: model)
-        //         .environmentObject(modelManager)
-        // }
+        // Removed commented out edit sheet code for cleanliness
     }
 
-    // Extracted API Key View using LabeledContent
+    // MARK: - Subviews
+
+    // API Key View - LabeledContent provides good alignment
     private var apiKeySection: some View {
-        LabeledContent { // Use LabeledContent for standard alignment
+        // LabeledContent aligns the label and the control group horizontally
+        LabeledContent {
             HStack {
+                // Use placeholder text consistent with the image
                 if isEditingApiKey {
                     TextField("API Key", text: $openRouterApiKey)
-                        .textFieldStyle(.roundedBorder)
                 } else {
                     SecureField("API Key", text: $openRouterApiKey)
-                        .textFieldStyle(.roundedBorder)
                 }
+                // Visibility toggle button
                 Button {
                     isEditingApiKey.toggle()
                 } label: {
                     Image(systemName: isEditingApiKey ? "eye.slash" : "eye")
                 }
-                .buttonStyle(.plain) // Keep button style minimal
+                .buttonStyle(.plain) // Use plain style for inline buttons
             }
+            .textFieldStyle(.roundedBorder) // Apply style to the HStack content
         } label: {
+            // Standard text label
             Text("OpenRouter API Key")
-            // Add help text below the label if desired
-            // Text("Stored locally for OpenRouter requests.").font(.caption).foregroundColor(.gray)
         }
-        .padding(.bottom, 5) // Add some spacing below
+        // Form provides default spacing, explicit padding might not be needed
     }
 
-    // Extracted Model Table View
+    // Model Table View
     private var modelTableSection: some View {
-        // Use Table for a structured, column-based view
         Table(modelManager.models, selection: $selection) {
-            TableColumn("Name", value: \.name)
-            TableColumn("ID", value: \.id)
+            TableColumn("Name", value: \.name).width(min: 100) // Suggest min width
+            TableColumn("ID", value: \.id).width(min: 150)
             TableColumn("Description") { model in
-                Text(model.description)
-                    .lineLimit(1) // Prevent long descriptions from expanding row height excessively
+                Text(model.description.isEmpty ? "-" : model.description) // Show placeholder if empty
+                    .lineLimit(1)
                     .truncationMode(.tail)
-            }
+            }.width(min: 100)
             TableColumn("Badge") { model in
-                 // Display badge similar to before, but aligned in its column
                  if let badge = model.badge, !badge.isEmpty {
-                     Text(badge.uppercased())
-                         .font(.caption) // Slightly larger font for table
+                     Text(badge.uppercased()) // Keep badge styling
+                         .font(.caption)
                          .padding(.horizontal, 5)
                          .padding(.vertical, 2)
-                         .background(Color.secondary.opacity(0.15)) // Subtle background
+                         .background(Color.secondary.opacity(0.15))
                          .cornerRadius(5)
-                         .foregroundColor(.secondary) // Use secondary color for less emphasis
+                         .foregroundColor(.secondary)
                  } else {
-                     Text("") // Ensure column alignment
+                     Text("-") // Show placeholder for alignment
                  }
-            }
-            // Add more columns if needed
+            }.width(ideal: 60) // Suggest ideal width for badge
         }
-        // Set a reasonable height for the table
-        .frame(minHeight: 150)
-        // Note: .onDelete doesn't work directly with Table. Removal is handled by the '-' button.
+        .frame(minHeight: 150, idealHeight: 200) // Provide min/ideal height
     }
 
-    // Function to remove models selected in the Table
-    private func removeSelectedModels() {
-        // Get the actual ModelOption objects corresponding to the selected IDs
-        let modelsToRemove = modelManager.models.filter { selection.contains($0.id) }
-        for model in modelsToRemove {
-            modelManager.removeModel(model) // Use the removeModel(_:) method
+    // Buttons for Model Management Table
+    private var modelActionButtons: some View {
+        HStack {
+            // Use standard bordered button style
+            Button {
+                showingAddModelSheet = true
+            } label: {
+                Image(systemName: "plus")
+            }
+            .buttonStyle(.bordered) // Apply bordered style
+            .help("Add a new model")
+
+            Button {
+                removeSelectedModels()
+            } label: {
+                Image(systemName: "minus")
+            }
+            .buttonStyle(.bordered) // Apply bordered style
+            .disabled(selection.isEmpty)
+            .help("Remove selected model(s)")
+            
+            Spacer() // Keep buttons pushed to the left
         }
-        selection.removeAll() // Clear selection after removal
+        // Add padding if needed, though Form section might handle it
+        // .padding(.top, 5)
+    }
+
+    // MARK: - Actions
+
+    private func removeSelectedModels() {
+        let modelsToRemove = modelManager.models.filter { selection.contains($0.id) }
+        modelManager.models.removeAll { modelsToRemove.contains($0) } // More efficient removal
+        selection.removeAll()
     }
 }
+
+// MARK: - Add Model View (Sheet)
 
 // New View for Adding Models (can be in the same file or separate)
 struct AddModelView: View {
