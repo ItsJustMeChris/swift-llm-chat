@@ -4,47 +4,48 @@ import Combine
 struct ChatView: View {
     @ObservedObject var chatSession: ChatSession
     @State private var message: String = ""
-    @State private var scrollToBottom: Bool = false
 
     @Namespace private var bottomID
 
     var body: some View {
         GeometryReader { geometry in
             HStack {
-                Spacer()
-                VStack {
+                Spacer() // Center the content horizontally
+                VStack(spacing: 0) { // Use VStack to stack ScrollView and InputBar
                     ScrollViewReader { scrollViewProxy in
                         ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 12) {
+                            LazyVStack(spacing: 0) { // Use LazyVStack for performance
                                 ForEach(chatSession.messages) { msg in
                                     ChatBubble(message: msg, parentWidth: min(1000, geometry.size.width - 32))
                                         .id(msg.id)
-                                        .transition(.opacity)
+                                        .padding(.vertical, 4) // Add some vertical padding between bubbles
                                 }
-                                Color.clear.frame(height: 1).id(bottomID)
+                                Color.clear.frame(height: 1).id(bottomID) // Anchor for scrolling
                             }
-                            .padding()
+                            .padding(.horizontal) // Add horizontal padding to the content
                         }
-                        .onChange(of: scrollToBottom) { _ in
+                        .onChange(of: chatSession.messages.count) { _ in
+                            // Scroll to the bottom when message count changes
                             withAnimation {
                                 scrollViewProxy.scrollTo(bottomID, anchor: .bottom)
                             }
-                            scrollToBottom = false
                         }
-                        .onChange(of: chatSession.messages.count) { _ in
-                            scrollToBottom = true
+                        .onAppear {
+                            // Scroll to bottom initially
+                             scrollViewProxy.scrollTo(bottomID, anchor: .bottom)
                         }
                     }
 
                     ChatInputBar(message: $message, onSend: sendMessage)
-                        .padding(.bottom, 8)
-                        .padding(.horizontal, 8)
+                        .padding(.top, 4) // Add padding above input bar
+                        .padding(.bottom, 8) // Keep bottom padding
+                        .padding(.horizontal) // Use consistent horizontal padding
                 }
-                .frame(maxWidth: 1000)
-                Spacer()
+                .frame(maxWidth: 1000) // Limit the max width of the chat content
+                Spacer() // Center the content horizontally
             }
-            .frame(width: geometry.size.width, height: geometry.size.height)
-            .background(Color(NSColor.windowBackgroundColor).edgesIgnoringSafeArea(.all))
+            // Removed the explicit frame setting on HStack, GeometryReader handles sizing
+            .background(Color(NSColor.windowBackgroundColor).edgesIgnoringSafeArea(.all)) // Apply background to the whole view
         }
     }
 

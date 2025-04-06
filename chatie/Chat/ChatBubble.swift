@@ -74,14 +74,27 @@ struct MarkdownStreamedText: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
+            // Render finalized text with Markdown and syntax highlighting
             Markdown(finalizedText)
                 .markdownCodeSyntaxHighlighter(.splash(theme: splashTheme))
-                .fixedSize(horizontal: false, vertical: true)
+                // .textSelection(.enabled) // REMOVED: Apply to container instead
+                // .fixedSize(horizontal: false, vertical: true) // Removed for performance testing
+                // .animation(.none, value: finalizedText) // Removed
 
-            Markdown(streamingText)
-                .markdownCodeSyntaxHighlighter(.splash(theme: splashTheme))
-                .fixedSize(horizontal: false, vertical: true)
+            // Render streaming text as plain Text for performance, with fade-in animation
+            // Removed the `if !streamingText.isEmpty` to keep the view stable during updates
+            Text(streamingText)
+                // Removed monospaced font setting to use default system font
+                .foregroundColor(Color(splashTheme.plainTextColor))
+                // .textSelection(.enabled) // REMOVED: Apply to container instead
+                .frame(minHeight: streamingText.isEmpty ? 0 : nil) // Avoid extra height when empty
+                .transition(.opacity.animation(.easeInOut(duration: 0.2))) // Add fade-in transition
+                // .fixedSize(horizontal: false, vertical: true) // Removed for performance testing
         }
+        .textSelection(.enabled) // ADDED: Apply text selection to the container VStack
+        // Apply fixedSize to the VStack instead, allowing internal views to size naturally
+        // Removed animation modifiers from here as they are handled by the transition now
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var splashTheme: Splash.Theme {
@@ -106,18 +119,16 @@ struct ChatBubble: View {
                     streamingText: message.openBlock
                 )
                 .padding(12)
-                .frame(maxWidth: parentWidth, alignment: .leading)
-                .background(Color(NSColor.windowBackgroundColor))
+                .background(Color(NSColor.windowBackgroundColor).opacity(0.9))
                 .cornerRadius(12)
+                .frame(maxWidth: parentWidth, alignment: .leading)
             } else {
                 Spacer(minLength: 0)
                 Text(message.text)
+                    .textSelection(.enabled) // Make user message text selectable
                     .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(NSColor.windowBackgroundColor))
-                            .brightness(0.08)
-                    )
+                    .background(Color(NSColor.windowBackgroundColor).opacity(0.9).brightness(0.08))
+                    .cornerRadius(12)
                     .frame(maxWidth: parentWidth * 0.7, alignment: .trailing)
             }
         }
