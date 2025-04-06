@@ -2,15 +2,11 @@ import SwiftUI
 
 struct RootView: View {
     @StateObject private var viewModel = ChatSessionsViewModel()
-    // Access the ModelManager from the environment
+
     @EnvironmentObject var modelManager: ModelManager
-    
-    // Remove hardcoded models
-    // let availableModels: [ModelOption] = [...]
-    // let defaultModel = ...
-    
+
     var body: some View {
-        // Ensure there's a default model available from the manager
+
         let currentDefaultModel = modelManager.getDefaultModel() ?? ModelOption(id: "error/no-models", name: "Error", description: "No models configured")
 
         NavigationSplitView {
@@ -27,13 +23,13 @@ struct RootView: View {
                             ToolbarItem(placement: .navigation) {
                                 CustomModelPickerButton(
                                     selectedModel: Binding<ModelOption>(
-                                        // Use the manager's default if chat session has no model
+
                                         get: { selectedChat.model ?? currentDefaultModel },
                                         set: { newModel in
                                             selectedChat.model = newModel
                                         }
                                     ),
-                                    // Use models from the manager
+
                                     options: modelManager.models
                                 )
                             }
@@ -70,31 +66,26 @@ struct DetailContainer<Content: View>: View {
     }
 }
 
-// Make ModelOption Codable for storage and Hashable for lists/ForEach
 struct ModelOption: Identifiable, Codable, Hashable, Equatable {
-    var id: String // Keep as var if editing ID is needed, else let
+    var id: String 
     var name: String
     var description: String
-    var badge: String? // Optional badge
+    var badge: String? 
 
-    // Conformance for Identifiable (already implicitly via id)
-    // Conformance for Equatable
     static func == (lhs: ModelOption, rhs: ModelOption) -> Bool {
         lhs.id == rhs.id &&
         lhs.name == rhs.name &&
         lhs.description == rhs.description &&
         lhs.badge == rhs.badge
     }
-    
-    // Conformance for Hashable
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
         hasher.combine(name)
         hasher.combine(description)
         hasher.combine(badge)
     }
-    
-    // Example initializer (can be customized)
+
     init(id: String, name: String, description: String, badge: String? = nil) {
         self.id = id
         self.name = name
@@ -102,7 +93,6 @@ struct ModelOption: Identifiable, Codable, Hashable, Equatable {
         self.badge = badge
     }
 }
-
 
 struct CustomModelPickerButton: View {
     @Binding var selectedModel: ModelOption
@@ -158,7 +148,7 @@ struct CustomModelPickerPopover: View {
             ScrollView {
                 VStack(spacing: 6) {
                     ForEach(options) { option in
-                        // Removed check for option.isDisabled
+
                         Button {
                             selectedModel = option
                             isOpen = false
@@ -168,7 +158,7 @@ struct CustomModelPickerPopover: View {
                                     HStack(spacing: 6) {
                                         Text(option.name)
                                             .fontWeight(.semibold)
-                                            // Removed conditional foregroundColor based on isDisabled
+
                                             .foregroundColor(.primary) 
 
                                         if let badge = option.badge {
@@ -189,7 +179,6 @@ struct CustomModelPickerPopover: View {
 
                                 Spacer()
 
-                                // Removed check for option.isDisabled
                                 if selectedModel == option {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.accentColor)
@@ -202,7 +191,7 @@ struct CustomModelPickerPopover: View {
                                     .fill(option == selectedModel ? Color.accentColor.opacity(0.1) : Color.clear)
                             )
                         }
-                        // Removed .disabled modifier
+
                         .buttonStyle(.plain)
                     }
                 }

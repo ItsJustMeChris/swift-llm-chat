@@ -1,15 +1,12 @@
 import Foundation
 
-// MARK: - JSONNullOrAny
-
-/// A helper type for decoding JSON values that might be null or any of a set of basic types.
 public struct JSONNullOrAny: Codable {
     public let rawValue: Any?
-    
+
     public init(rawValue: Any?) {
         self.rawValue = rawValue
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if container.decodeNil() {
@@ -32,10 +29,10 @@ public struct JSONNullOrAny: Codable {
             self.rawValue = stringVal
             return
         }
-        // Fallback: try to decode as a string.
+
         self.rawValue = try container.decode(String.self)
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         if let intVal = rawValue as? Int {
@@ -52,22 +49,12 @@ public struct JSONNullOrAny: Codable {
     }
 }
 
-// MARK: - Public API
-
-/// A convenient wrapper for the OpenAI Chat Completions API.
 public class OpenAIChat {
-    
-    // MARK: - Properties
+
     private let apiKey: String
     private let session: URLSession
     private let baseURL: URL
-    
-    // MARK: - Init
-    /// Initializes the chat client with your OpenAI API key.
-    /// - Parameters:
-    ///   - apiKey: Your OpenAI API key.
-    ///   - session: A custom URLSession, if desired. Defaults to `.shared`.
-    ///   - baseURL: Custom base URL, if you are proxying or using a different domain.
+
     public init(apiKey: String,
                 session: URLSession = .shared,
                 baseURL: URL = URL(string: "https://api.openai.com")!) {
@@ -75,12 +62,7 @@ public class OpenAIChat {
         self.session = session
         self.baseURL = baseURL
     }
-    
-    // MARK: - Non-Streaming
-    
-    /// Creates a chat completion (non-streaming).
-    /// - Parameter request: The request body containing all parameters.
-    /// - Returns: A `ChatCompletionResponse` with the model’s response.
+
     public func createChatCompletion(
         request: ChatCompletionRequest
     ) async throws -> ChatCompletionResponse {
@@ -89,56 +71,44 @@ public class OpenAIChat {
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
         let bodyData = try encoder.encode(request)
         urlRequest.httpBody = bodyData
-        
+
         let (data, response) = try await session.data(for: urlRequest)
         try validateHTTP(response: response, data: data)
-        
+
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let chatResponse = try decoder.decode(ChatCompletionResponse.self, from: data)
         return chatResponse
     }
-    
-    // MARK: - Streaming
-    
-    /// Creates a chat completion in streaming mode using Server-Sent Events (SSE).
-    /// Returns an `AsyncThrowingStream` of `ChatCompletionStreamChunk` objects,
-    /// each representing a piece of data sent by the API.
-    ///
-    /// - Parameter request: The chat completion request (with `stream = true`).
-    ///   You *must* set `stream = true` in the request for streaming to work.
-    /// - Returns: An async stream of `ChatCompletionStreamChunk`.
+
     public func createChatCompletionStream(
         request: ChatCompletionRequest
     ) async throws -> AsyncThrowingStream<ChatCompletionStreamChunk, Error> {
         guard request.stream == true else {
             throw OpenAIChatError.streamingParameterMissing
         }
-        
+
         let endpoint = baseURL.appendingPathComponent("/v1/chat/completions")
         var urlRequest = URLRequest(url: endpoint)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
         let bodyData = try encoder.encode(request)
         urlRequest.httpBody = bodyData
-        
+
         let (stream, task) = makeSSEStream(with: urlRequest)
         task.resume()
         return stream
     }
-    
-    // MARK: - Helpers
-    
-    /// Validates an HTTP response by checking status code and throwing if it’s an error.
+
     private func validateHTTP(response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse else {
             throw OpenAIChatError.invalidResponse
@@ -148,16 +118,15 @@ public class OpenAIChat {
             throw OpenAIChatError.apiError(statusCode: http.statusCode, body: bodyText)
         }
     }
-    
-    /// Creates an `AsyncThrowingStream` that parses Server-Sent Events (SSE) from the API response.
+
     private func makeSSEStream(with request: URLRequest) ->
         (AsyncThrowingStream<ChatCompletionStreamChunk, Error>, URLSessionDataTask) {
-        // Capture the continuation so the delegate can yield events.
+
         var continuation: AsyncThrowingStream<ChatCompletionStreamChunk, Error>.Continuation!
         let stream = AsyncThrowingStream<ChatCompletionStreamChunk, Error> { cont in
             continuation = cont
         }
-        
+
         let delegate = SSEStreamDelegate { result in
             switch result {
             case .failure(let error):
@@ -166,47 +135,45 @@ public class OpenAIChat {
                 continuation.yield(chunk)
             }
         }
-        
+
         let config = URLSessionConfiguration.default
         let ephemeralSession = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
         let task = ephemeralSession.dataTask(with: request)
-        
+
         return (stream, task)
     }
 }
 
-// MARK: - SSE Parsing Delegate
-
 fileprivate class SSEStreamDelegate: NSObject, URLSessionDataDelegate {
     private let onEvent: (Result<ChatCompletionStreamChunk, Error>) -> Void
     private var buffer = Data()
-    
+
     init(onEvent: @escaping (Result<ChatCompletionStreamChunk, Error>) -> Void) {
         self.onEvent = onEvent
     }
-    
+
     func urlSession(_ session: URLSession,
                     dataTask: URLSessionDataTask,
                     didReceive data: Data) {
         buffer.append(data)
         let separator1 = "\n\n".data(using: .utf8)!
         let separator2 = "\r\n\r\n".data(using: .utf8)!
-        
+
         while true {
             if let range = buffer.range(of: separator1) ?? buffer.range(of: separator2) {
                 let chunkData = buffer.subdata(in: 0..<range.lowerBound)
                 buffer.removeSubrange(0..<range.upperBound)
-                
+
                 let sseString = String(data: chunkData, encoding: .utf8) ?? ""
                 if sseString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     continue
                 }
-                
+
                 let lines = sseString.components(separatedBy: .newlines)
                 for line in lines {
                     let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard trimmed.hasPrefix("data:") else { continue }
-                    
+
                     let jsonString = trimmed.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)
                     if jsonString == "[DONE]" {
                         return
@@ -227,7 +194,7 @@ fileprivate class SSEStreamDelegate: NSObject, URLSessionDataDelegate {
             }
         }
     }
-    
+
     func urlSession(_ session: URLSession,
                     task: URLSessionTask,
                     didCompleteWithError error: Error?) {
@@ -237,12 +204,10 @@ fileprivate class SSEStreamDelegate: NSObject, URLSessionDataDelegate {
     }
 }
 
-// MARK: - ChatCompletionRequest (Body Parameters)
-
 public struct ChatCompletionRequest: Encodable {
     public var model: String
     public var messages: [ChatMessage]
-    
+
     public var audio: AudioOutputParameters?
     public var frequencyPenalty: Double?
     public var presencePenalty: Double?
@@ -271,7 +236,7 @@ public struct ChatCompletionRequest: Encodable {
     public var webSearchOptions: WebSearchOptions?
     public var functionCall: FunctionCallSetting?
     public var functions: [DeprecatedFunctionDefinition]?
-    
+
     public init(
         model: String,
         messages: [ChatMessage],
@@ -337,22 +302,20 @@ public struct ChatCompletionRequest: Encodable {
     }
 }
 
-// MARK: - Supporting Types
-
 public struct ChatMessage: Codable {
     public var role: String
     public var content: ContentUnion?
     public var name: String?
-    
+
     public var audio: AudioData?
     public var refusal: String?
-    
+
     public var functionCall: DeprecatedFunctionCall?
     public var toolCalls: [ToolCall]?
-    
+
     public var toolCallId: String?
     public var functionName: String?
-    
+
     public init(role: String,
                 content: ContentUnion? = nil,
                 name: String? = nil,
@@ -374,11 +337,10 @@ public struct ChatMessage: Codable {
     }
 }
 
-/// The content of a message can be either a string or an array of content parts.
 public enum ContentUnion: Codable {
     case text(String)
     case parts([ContentPart])
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let str = try? container.decode(String.self) {
@@ -389,7 +351,7 @@ public enum ContentUnion: Codable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unable to decode ContentUnion")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
@@ -401,13 +363,12 @@ public enum ContentUnion: Codable {
     }
 }
 
-/// A piece of content in array form.
 public enum ContentPart: Codable {
     case text(TextContentPart)
     case image(ImageContentPart)
     case audio(AudioContentPart)
     case file(FileContentPart)
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let textPart = try? container.decode(TextContentPart.self) {
@@ -422,7 +383,7 @@ public enum ContentPart: Codable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unable to decode ContentPart")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         switch self {
         case .text(let textPart):
@@ -437,76 +398,67 @@ public enum ContentPart: Codable {
     }
 }
 
-// MARK: Content Part Subtypes
-
 public struct TextContentPart: Codable {
     public let text: String
-    public let type: String // e.g. "text"
+    public let type: String 
 }
 
 public struct ImageContentPart: Codable {
     public let imageUrl: ImageURL
     public let detail: String?
-    public let type: String // e.g. "image"
+    public let type: String 
 }
 
-/// The image URL may be a direct URL or base64 data.
 public struct ImageURL: Codable {
     public let url: String
 }
 
 public struct AudioContentPart: Codable {
     public let inputAudio: AudioInput
-    public let type: String // e.g. "input_audio"
+    public let type: String 
 }
 
 public struct AudioInput: Codable {
-    public let data: String  // base64
-    public let format: String // "wav" or "mp3"
+    public let data: String  
+    public let format: String 
 }
 
 public struct FileContentPart: Codable {
     public let file: FileData
-    public let type: String // "file"
+    public let type: String 
 }
 
 public struct FileData: Codable {
-    public let fileData: String? // base64 data
-    public let fileId: String?   // The ID of an uploaded file
+    public let fileData: String? 
+    public let fileId: String?   
     public let filename: String?
 }
 
-// MARK: - Audio Output
-
 public struct AudioOutputParameters: Codable {
-    public let format: String // "wav", "mp3", "flac", "opus", or "pcm16"
-    public let voice: String  // e.g. "alloy", "ash", ...
-    
+    public let format: String 
+    public let voice: String  
+
     public init(format: String, voice: String) {
         self.format = format
         self.voice = voice
     }
 }
 
-/// For assistant messages that include audio data.
 public struct AudioData: Codable {
     public let format: String
     public let voice: String
-    
+
     public init(format: String, voice: String) {
         self.format = format
         self.voice = voice
     }
 }
 
-// MARK: - Stopping sequences
-
-/// The stop parameter can be a string, array, or null.
 public enum StopSequence: Codable {
     case none
     case single(String)
     case multiple([String])
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if container.decodeNil() {
@@ -519,7 +471,7 @@ public enum StopSequence: Codable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unable to decode StopSequence")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
@@ -533,35 +485,28 @@ public enum StopSequence: Codable {
     }
 }
 
-// MARK: - Streaming Options
-
-/// Options for streaming response.
 public struct StreamOptions: Codable {
     public let includeUsage: Bool?
-    
+
     public init(includeUsage: Bool? = nil) {
         self.includeUsage = includeUsage
     }
 }
 
-// MARK: - Predictions
-
-/// Configuration for predicted output content to speed generation.
 public struct PredictionConfig: Codable {
     public let content: PredictionContent
-    public let type: String // must be "content"
-    
+    public let type: String 
+
     public init(content: PredictionContent) {
         self.content = content
         self.type = "content"
     }
 }
 
-/// The predicted content.
 public enum PredictionContent: Codable {
     case text(String)
     case parts([TextContentPart])
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let text = try? container.decode(String.self) {
@@ -572,7 +517,7 @@ public enum PredictionContent: Codable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unable to decode PredictionContent")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
@@ -584,13 +529,11 @@ public enum PredictionContent: Codable {
     }
 }
 
-// MARK: - ResponseFormat
-
 public enum ResponseFormat: Codable {
     case text(TextResponseFormat)
     case jsonSchema(JSONSchemaResponseFormat)
     case jsonObject(JSONObjResponseFormat)
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let txt = try? container.decode(TextResponseFormat.self) {
@@ -603,7 +546,7 @@ public enum ResponseFormat: Codable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unable to decode ResponseFormat")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         switch self {
         case .text(let txt):
@@ -616,27 +559,23 @@ public enum ResponseFormat: Codable {
     }
 }
 
-/// Default text response format.
 public struct TextResponseFormat: Codable {
     public var type = "text"
 }
 
-/// JSON Schema response format.
 public struct JSONSchemaResponseFormat: Codable {
     public var type = "json_schema"
     public let jsonSchema: JSONSchemaObject
-    
+
     public init(jsonSchema: JSONSchemaObject) {
         self.jsonSchema = jsonSchema
     }
 }
 
-/// For older JSON-object format.
 public struct JSONObjResponseFormat: Codable {
     public var type = "json_object"
 }
 
-/// A JSON schema for structured outputs.
 public struct JSONSchemaObject: Codable {
     public let name: String
     public let description: String?
@@ -644,14 +583,12 @@ public struct JSONSchemaObject: Codable {
     public let strict: Bool?
 }
 
-// MARK: - Tools & Function Calls
-
 public enum ToolChoice: Codable {
     case none
     case auto
     case required
     case forced(FunctionTarget)
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let value = try container.decode(String.self)
@@ -666,7 +603,7 @@ public enum ToolChoice: Codable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ToolChoice")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
@@ -682,11 +619,10 @@ public enum ToolChoice: Codable {
     }
 }
 
-/// Specifies a single function to force-call.
 public struct FunctionTarget: Codable {
     public let type: String
     public let function: ForcedFunctionCall
-    
+
     public init(functionName: String) {
         self.type = "function"
         self.function = ForcedFunctionCall(name: functionName)
@@ -697,23 +633,21 @@ public struct ForcedFunctionCall: Codable {
     public let name: String
 }
 
-/// A list of tools the model may call.
 public struct ToolDefinition: Codable {
     public let function: ToolFunction
-    
+
     public init(function: ToolFunction) {
         self.function = function
     }
 }
 
-/// Actually the same shape as functions -> "function": {...}
 public struct ToolFunction: Codable {
     public let name: String
     public let description: String?
     public let parameters: [String: AnyCodable]?
     public let strict: Bool?
     public var type = "function"
-    
+
     public init(name: String,
                 description: String? = nil,
                 parameters: [String: AnyCodable]? = nil,
@@ -725,14 +659,11 @@ public struct ToolFunction: Codable {
     }
 }
 
-// MARK: Deprecated fields
-
-/// Deprecated in favor of `tool_choice`.
 public enum FunctionCallSetting: Codable {
     case none
     case auto
     case forced(ForcedFunctionCall)
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let str = try? container.decode(String.self), str == "none" {
@@ -744,7 +675,7 @@ public enum FunctionCallSetting: Codable {
             self = .forced(fc)
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
@@ -758,12 +689,11 @@ public enum FunctionCallSetting: Codable {
     }
 }
 
-/// A single function definition for the old `functions` array.
 public struct DeprecatedFunctionDefinition: Codable {
     public let name: String
     public let description: String?
     public let parameters: [String: AnyCodable]?
-    
+
     public init(name: String,
                 description: String? = nil,
                 parameters: [String: AnyCodable]? = nil) {
@@ -773,25 +703,21 @@ public struct DeprecatedFunctionDefinition: Codable {
     }
 }
 
-/// A single function_call object in an assistant message.
 public struct DeprecatedFunctionCall: Codable {
     public let name: String?
     public let arguments: [String: AnyCodable]?
-    
+
     public init(name: String?, arguments: [String: AnyCodable]?) {
         self.name = name
         self.arguments = arguments
     }
 }
 
-// MARK: - Tool Calls
-
-/// The model can respond with an array of tool calls.
 public struct ToolCall: Codable {
-    public let role: String  // always "tool"
+    public let role: String  
     public let content: ContentUnion
     public let toolCallId: String
-    
+
     public init(role: String = "tool",
                 content: ContentUnion,
                 toolCallId: String) {
@@ -801,12 +727,10 @@ public struct ToolCall: Codable {
     }
 }
 
-// MARK: - Web Search
-
 public struct WebSearchOptions: Codable {
     public let searchContextSize: String?
     public let userLocation: UserLocation?
-    
+
     public init(searchContextSize: String? = nil,
                 userLocation: UserLocation? = nil) {
         self.searchContextSize = searchContextSize
@@ -817,7 +741,7 @@ public struct WebSearchOptions: Codable {
 public struct UserLocation: Codable {
     public let approximate: ApproximateLocation
     public let type: String
-    
+
     public init(approximate: ApproximateLocation) {
         self.approximate = approximate
         self.type = "approximate"
@@ -831,8 +755,6 @@ public struct ApproximateLocation: Codable {
     public let timezone: String?
 }
 
-// MARK: - ChatCompletionResponse
-
 public struct ChatCompletionResponse: Codable {
     public let id: String
     public let object: String
@@ -841,21 +763,21 @@ public struct ChatCompletionResponse: Codable {
     public let choices: [ChatCompletionChoice]
     public let usage: UsageInfo?
     public let serviceTier: String?
-    
+
     public struct ChatCompletionChoice: Codable {
         public let index: Int
         public let message: AssistantMessage
         public let logprobs: JSONNullOrAny?
         public let finishReason: String?
     }
-    
+
     public struct AssistantMessage: Codable {
         public let role: String
         public let content: ContentUnionOrNull?
         public let refusal: String?
         public let annotations: [String]?
     }
-    
+
     public struct UsageInfo: Codable {
         public let promptTokens: Int
         public let completionTokens: Int
@@ -863,7 +785,7 @@ public struct ChatCompletionResponse: Codable {
         public let promptTokensDetails: TokensDetails?
         public let completionTokensDetails: TokensDetails?
     }
-    
+
     public struct TokensDetails: Codable {
         public let cachedTokens: Int?
         public let audioTokens: Int?
@@ -871,13 +793,12 @@ public struct ChatCompletionResponse: Codable {
         public let acceptedPredictionTokens: Int?
         public let rejectedPredictionTokens: Int?
     }
-    
-    /// Helper to parse `content` field which can be an array or string or null
+
     public enum ContentUnionOrNull: Codable {
         case text(String)
         case parts([AnyDecodablePart])
         case none
-        
+
         public init(from decoder: Decoder) throws {
             let container = try decoder.singleValueContainer()
             if container.decodeNil() {
@@ -894,7 +815,7 @@ public struct ChatCompletionResponse: Codable {
             }
             self = .none
         }
-        
+
         public func encode(to encoder: Encoder) throws {
             var container = encoder.singleValueContainer()
             switch self {
@@ -907,15 +828,13 @@ public struct ChatCompletionResponse: Codable {
             }
         }
     }
-    
+
     public struct AnyDecodablePart: Codable {
-        // Simplified placeholder.
+
         public init(from decoder: Decoder) throws {}
         public func encode(to encoder: Encoder) throws {}
     }
 }
-
-// MARK: - ChatCompletionStreamChunk
 
 public struct ChatCompletionStreamChunk: Codable {
     public let id: String?
@@ -923,13 +842,13 @@ public struct ChatCompletionStreamChunk: Codable {
     public let created: Int?
     public let model: String?
     public let choices: [StreamChoice]?
-    
+
     public struct StreamChoice: Codable {
         public let index: Int?
         public let delta: StreamDelta?
         public let finishReason: String?
     }
-    
+
     public struct StreamDelta: Codable {
         public let role: String?
         public let content: String?
@@ -939,22 +858,19 @@ public struct ChatCompletionStreamChunk: Codable {
     }
 }
 
-// MARK: - Error Handling
-
 public enum OpenAIChatError: Error {
     case invalidResponse
     case apiError(statusCode: Int, body: String)
     case streamingParameterMissing
 }
 
-/// A helper for encoding/decoding arbitrary values.
 public struct AnyCodable: Codable {
     public let value: Any
-    
+
     public init(_ value: Any) {
         self.value = value
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let intVal = try? container.decode(Int.self) {
@@ -973,7 +889,7 @@ public struct AnyCodable: Codable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "AnyCodable value cannot be decoded")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch value {

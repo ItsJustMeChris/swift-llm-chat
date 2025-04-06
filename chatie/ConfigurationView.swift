@@ -1,82 +1,77 @@
 import SwiftUI
 
 struct ConfigurationView: View {
-    // API Key Section
+
     @AppStorage("openRouterApiKey") private var openRouterApiKey: String = ""
     @State private var isEditingApiKey: Bool = false
 
-    // Model Management Section
     @EnvironmentObject var modelManager: ModelManager
     @State private var showingAddModelSheet = false
-    @State private var modelToEdit: ModelOption? = nil // Keep for potential future use
+    @State private var modelToEdit: ModelOption? = nil 
     @State private var selection = Set<ModelOption.ID>()
 
     var body: some View {
-        // Use Form directly as the main container for standard settings padding/spacing
+
         Form {
             Section("API Configuration") {
                 apiKeySection
             }
 
             Section("Model Management") {
-                // Embed the Table and buttons within the section
+
                 modelTableSection
-                modelActionButtons // Add buttons below the table
+                modelActionButtons 
             }
         }
-        // Apply padding to the Form itself for overall window spacing
+
         .padding()
-        .frame(minWidth: 480, minHeight: 350) // Slightly wider for table columns
+        .frame(minWidth: 480, minHeight: 350) 
         .sheet(isPresented: $showingAddModelSheet) {
-            // Present AddModelView centered, with environment object
+
             AddModelView()
                 .environmentObject(modelManager)
         }
-        // Removed commented out edit sheet code for cleanliness
+
     }
 
-    // MARK: - Subviews
-
-    // API Key View - LabeledContent provides good alignment
     private var apiKeySection: some View {
-        // LabeledContent aligns the label and the control group horizontally
+
         LabeledContent {
             HStack {
-                // Use placeholder text consistent with the image
+
                 if isEditingApiKey {
                     TextField("API Key", text: $openRouterApiKey)
                 } else {
                     SecureField("API Key", text: $openRouterApiKey)
                 }
-                // Visibility toggle button
+
                 Button {
                     isEditingApiKey.toggle()
                 } label: {
                     Image(systemName: isEditingApiKey ? "eye.slash" : "eye")
                 }
-                .buttonStyle(.plain) // Use plain style for inline buttons
+                .buttonStyle(.plain) 
             }
-            .textFieldStyle(.roundedBorder) // Apply style to the HStack content
+            .textFieldStyle(.roundedBorder) 
         } label: {
-            // Standard text label
+
             Text("OpenRouter API Key")
         }
-        // Form provides default spacing, explicit padding might not be needed
+
     }
 
-    // Model Table View
     private var modelTableSection: some View {
         Table(modelManager.models, selection: $selection) {
-            TableColumn("Name", value: \.name).width(min: 100) // Suggest min width
+            TableColumn("Name", value: \.name).width(min: 100) 
             TableColumn("ID", value: \.id).width(min: 150)
             TableColumn("Description") { model in
-                Text(model.description.isEmpty ? "-" : model.description) // Show placeholder if empty
+                Text(model.description.isEmpty ? "-" : model.description) 
                     .lineLimit(1)
                     .truncationMode(.tail)
             }.width(min: 100)
             TableColumn("Badge") { model in
                  if let badge = model.badge, !badge.isEmpty {
-                     Text(badge.uppercased()) // Keep badge styling
+                     Text(badge.uppercased()) 
                          .font(.caption)
                          .padding(.horizontal, 5)
                          .padding(.vertical, 2)
@@ -84,23 +79,22 @@ struct ConfigurationView: View {
                          .cornerRadius(5)
                          .foregroundColor(.secondary)
                  } else {
-                     Text("-") // Show placeholder for alignment
+                     Text("-") 
                  }
-            }.width(ideal: 60) // Suggest ideal width for badge
+            }.width(ideal: 60) 
         }
-        .frame(minHeight: 150, idealHeight: 200) // Provide min/ideal height
+        .frame(minHeight: 150, idealHeight: 200) 
     }
 
-    // Buttons for Model Management Table
     private var modelActionButtons: some View {
         HStack {
-            // Use standard bordered button style
+
             Button {
                 showingAddModelSheet = true
             } label: {
                 Image(systemName: "plus")
             }
-            .buttonStyle(.bordered) // Apply bordered style
+            .buttonStyle(.bordered) 
             .help("Add a new model")
 
             Button {
@@ -108,28 +102,22 @@ struct ConfigurationView: View {
             } label: {
                 Image(systemName: "minus")
             }
-            .buttonStyle(.bordered) // Apply bordered style
+            .buttonStyle(.bordered) 
             .disabled(selection.isEmpty)
             .help("Remove selected model(s)")
-            
-            Spacer() // Keep buttons pushed to the left
-        }
-        // Add padding if needed, though Form section might handle it
-        // .padding(.top, 5)
-    }
 
-    // MARK: - Actions
+            Spacer() 
+        }
+
+    }
 
     private func removeSelectedModels() {
         let modelsToRemove = modelManager.models.filter { selection.contains($0.id) }
-        modelManager.models.removeAll { modelsToRemove.contains($0) } // More efficient removal
+        modelManager.models.removeAll { modelsToRemove.contains($0) } 
         selection.removeAll()
     }
 }
 
-// MARK: - Add Model View (Sheet)
-
-// New View for Adding Models (can be in the same file or separate)
 struct AddModelView: View {
     @EnvironmentObject var modelManager: ModelManager
     @Environment(\.dismiss) var dismiss
@@ -138,14 +126,14 @@ struct AddModelView: View {
     @State private var modelName: String = ""
     @State private var modelDescription: String = ""
     @State private var modelBadge: String = ""
-    
+
     @State private var showError = false
     @State private var errorMessage = ""
 
     var body: some View {
-        // Use Form for standard macOS sheet layout
+
         Form {
-            Section { // Group fields without a header
+            Section { 
                 LabeledContent("Model ID") {
                     TextField("unique-id (e.g., provider/model)", text: $modelId)
                         .textFieldStyle(.roundedBorder)
@@ -164,19 +152,18 @@ struct AddModelView: View {
                 }
             }
 
-            // Display error message if present
             if showError {
-                 Section { // Put error in its own section for visibility
+                 Section { 
                      Text(errorMessage)
                          .foregroundColor(.red)
-                         .font(.callout) // Slightly larger than caption
+                         .font(.callout) 
                  }
             }
         }
         .padding()
-        .frame(minWidth: 350, idealWidth: 400) // Adjust sheet size
-        .navigationTitle("Add New Model") // Use navigationTitle for sheet title
-        .toolbar { // Add standard Cancel/Add buttons to toolbar
+        .frame(minWidth: 350, idealWidth: 400) 
+        .navigationTitle("Add New Model") 
+        .toolbar { 
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
                     dismiss()
@@ -186,11 +173,10 @@ struct AddModelView: View {
                 Button("Add") {
                     addModel()
                 }
-                .disabled(modelId.isEmpty || modelName.isEmpty) // Validation
+                .disabled(modelId.isEmpty || modelName.isEmpty) 
             }
         }
     }
-
 
     private func addModel() {
         guard !modelId.isEmpty, !modelName.isEmpty else {
@@ -198,13 +184,13 @@ struct AddModelView: View {
             showError = true
             return
         }
-        // Basic check for existing ID (ModelManager also checks, but good to have here too)
+
         if modelManager.models.contains(where: { $0.id.lowercased() == modelId.lowercased() }) {
              errorMessage = "A model with this ID already exists."
              showError = true
              return
         }
-        
+
         let newModel = ModelOption(
             id: modelId.trimmingCharacters(in: .whitespacesAndNewlines),
             name: modelName.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -216,11 +202,9 @@ struct AddModelView: View {
     }
 }
 
-
-// Preview needs the EnvironmentObject
 struct ConfigurationView_Previews: PreviewProvider {
     static var previews: some View {
         ConfigurationView()
-            .environmentObject(ModelManager()) // Provide a dummy manager for preview
+            .environmentObject(ModelManager()) 
     }
 }

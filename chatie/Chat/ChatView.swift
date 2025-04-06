@@ -11,42 +11,42 @@ struct ChatView: View {
     var body: some View {
         GeometryReader { geometry in
             HStack {
-                Spacer() // Center the content horizontally
-                VStack(spacing: 0) { // Use VStack to stack ScrollView and InputBar
+                Spacer() 
+                VStack(spacing: 0) { 
                     ScrollViewReader { scrollViewProxy in
                         ScrollView {
-                            LazyVStack(spacing: 0) { // Use LazyVStack for performance
+                            LazyVStack(spacing: 0) { 
                                 ForEach(chatSession.messages) { msg in
                                     ChatBubble(message: msg, parentWidth: min(1000, geometry.size.width - 32))
                                         .id(msg.id)
-                                        .padding(.vertical, 4) // Add some vertical padding between bubbles
+                                        .padding(.vertical, 4) 
                                 }
-                                Color.clear.frame(height: 1).id(bottomID) // Anchor for scrolling
+                                Color.clear.frame(height: 1).id(bottomID) 
                             }
-                            .padding(.horizontal) // Add horizontal padding to the content
+                            .padding(.horizontal) 
                         }
                         .onChange(of: chatSession.messages.count) { _ in
-                            // Scroll to the bottom when message count changes
+
                             withAnimation {
                                 scrollViewProxy.scrollTo(bottomID, anchor: .bottom)
                             }
                         }
                         .onAppear {
-                            // Scroll to bottom initially
+
                              scrollViewProxy.scrollTo(bottomID, anchor: .bottom)
                         }
                     }
 
                     ChatInputBar(message: $message, onSend: sendMessage)
-                        .padding(.top, 4) // Add padding above input bar
-                        .padding(.bottom, 8) // Keep bottom padding
-                        .padding(.horizontal) // Use consistent horizontal padding
+                        .padding(.top, 4) 
+                        .padding(.bottom, 8) 
+                        .padding(.horizontal) 
                 }
-                .frame(maxWidth: 1000) // Limit the max width of the chat content
-                Spacer() // Center the content horizontally
+                .frame(maxWidth: 1000) 
+                Spacer() 
             }
-            // Removed the explicit frame setting on HStack, GeometryReader handles sizing
-            .background(Color(NSColor.windowBackgroundColor).edgesIgnoringSafeArea(.all)) // Apply background to the whole view
+
+            .background(Color(NSColor.windowBackgroundColor).edgesIgnoringSafeArea(.all)) 
         }
     }
 
