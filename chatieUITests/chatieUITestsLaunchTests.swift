@@ -1,13 +1,6 @@
-//
-//  sidebarifyUITestsLaunchTests.swift
-//  sidebarifyUITests
-//
-//  Created by Chris McGravey on 4/3/25.
-//
-
 import XCTest
 
-final class sidebarifyUITestsLaunchTests: XCTestCase {
+final class chatieUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

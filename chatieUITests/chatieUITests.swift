@@ -1,13 +1,6 @@
-//
-//  sidebarifyUITests.swift
-//  sidebarifyUITests
-//
-//  Created by Chris McGravey on 4/3/25.
-//
-
 import XCTest
 
-final class sidebarifyUITests: XCTestCase {
+final class chatieUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.
