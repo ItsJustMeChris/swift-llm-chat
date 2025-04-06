@@ -33,12 +33,11 @@ struct OptimizedStreamedText: NSViewRepresentable {
         
         let textView = IntrinsicTextView(frame: .zero)
         textView.isEditable = false
-        textView.isSelectable = false
+        textView.isSelectable = true
         textView.drawsBackground = false
         textView.font = NSFont.systemFont(ofSize: 14)
-        textView.textContainerInset = NSSize(width: 0, height: 0)
+        textView.textContainerInset = .zero
         textView.textContainer?.lineFragmentPadding = 0
-        
         textView.textContainer?.widthTracksTextView = true
         textView.isHorizontallyResizable = false
         textView.isVerticallyResizable = true
@@ -53,13 +52,11 @@ struct OptimizedStreamedText: NSViewRepresentable {
         textView.string = text
         
         let currentWidth = availableWidth
-        
         textView.textContainer?.containerSize = NSSize(width: currentWidth, height: .greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
 
         textView.layoutManager?.ensureLayout(for: textView.textContainer!)
         let newSize = textView.intrinsicContentSize
-
         textView.frame = NSRect(x: 0, y: 0, width: currentWidth, height: newSize.height)
         
         nsView.invalidateIntrinsicContentSize()

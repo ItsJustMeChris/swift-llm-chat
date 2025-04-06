@@ -4,8 +4,8 @@ struct RootView: View {
     @StateObject private var viewModel = ChatSessionsViewModel()
     
     let availableModels: [ModelOption] = [
-        .init(id: "openrouter/quasar-alpha", name: "Quasar Alpha", description: "Probably gpt-os", badge: "wOw", isDisabled: false),
-        .init(id: "meta-llama/llama-4-maverick:free", name: "Llama 4 Maverick", description: "LLAMA 4 FREE", badge: nil, isDisabled: false),
+        .init(id: "openrouter/quasar-alpha", name: "Quasar Alpha", description: "Probably gpt-os", badge: "???", isDisabled: false),
+        .init(id: "meta-llama/llama-4-maverick:free", name: "Llama 4 Maverick", description: "LLAMA 4 FREE", badge: "LLAMA", isDisabled: false),
     ]
     
     let defaultModel = ModelOption(id: "openrouter/quasar-alpha", name: "Quasar Alpha", description: "Probably gpt-os", badge: "wOw", isDisabled: false)
