@@ -1,120 +1,148 @@
 import SwiftUI
 
 struct ConfigurationView: View {
-
     @AppStorage("openRouterApiKey") private var openRouterApiKey: String = ""
     @State private var isEditingApiKey: Bool = false
 
     @EnvironmentObject var modelManager: ModelManager
     @State private var showingAddModelSheet = false
-    @State private var modelToEdit: ModelOption? = nil 
     @State private var selection = Set<ModelOption.ID>()
+    @State private var draggingItem: ModelOption? = nil
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
 
-        Form {
-            Section("API Configuration") {
-                apiKeySection
+            GroupBox(label: Text("API Configuration").font(.headline)) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("OpenRouter API Key")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    HStack {
+                        if isEditingApiKey {
+                            TextField("Enter your API Key", text: $openRouterApiKey)
+                        } else {
+                            SecureField("Enter your API Key", text: $openRouterApiKey)
+                        }
+                        Button {
+                            isEditingApiKey.toggle()
+                        } label: {
+                            Image(systemName: isEditingApiKey ? "eye.slash" : "eye")
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .textFieldStyle(.roundedBorder)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
             }
 
-            Section("Model Management") {
+            GroupBox(label: Text("Model Management").font(.headline)) {
+                VStack(alignment: .leading, spacing: 12) {
 
-                modelTableSection
-                modelActionButtons 
+                    List(selection: $selection) {
+                        ForEach(modelManager.models) { model in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(model.name)
+                                        .font(.body)
+                                    Text(model.id)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                if let badge = model.badge, !badge.isEmpty {
+                                    Text(badge.uppercased())
+                                        .font(.caption2)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Color.secondary.opacity(0.15))
+                                        .cornerRadius(5)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                            .onDrag {
+                                self.draggingItem = model
+                                return NSItemProvider(object: NSString(string: model.id))
+                            }
+                            .onDrop(
+                                of: [.text],
+                                delegate: ModelDropDelegate(
+                                    item: model,
+                                    models: $modelManager.models,
+                                    draggingItem: $draggingItem
+                                )
+                            )
+                        }
+                    }
+                    .listStyle(.plain)
+                    .frame(minHeight: 150, idealHeight: 200)
+
+                    HStack {
+                        Button {
+                            showingAddModelSheet = true
+                        } label: {
+                            Label("Add Model", systemImage: "plus")
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            removeSelectedModels()
+                        } label: {
+                            Label("Remove Model(s)", systemImage: "minus")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(selection.isEmpty)
+
+                        Spacer()
+                    }
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
             }
+
+            Spacer()
         }
-
         .padding()
-        .frame(minWidth: 480, minHeight: 350) 
+        .frame(minWidth: 480, minHeight: 350)
         .sheet(isPresented: $showingAddModelSheet) {
-
             AddModelView()
                 .environmentObject(modelManager)
         }
-
-    }
-
-    private var apiKeySection: some View {
-
-        LabeledContent {
-            HStack {
-
-                if isEditingApiKey {
-                    TextField("API Key", text: $openRouterApiKey)
-                } else {
-                    SecureField("API Key", text: $openRouterApiKey)
-                }
-
-                Button {
-                    isEditingApiKey.toggle()
-                } label: {
-                    Image(systemName: isEditingApiKey ? "eye.slash" : "eye")
-                }
-                .buttonStyle(.plain) 
-            }
-            .textFieldStyle(.roundedBorder) 
-        } label: {
-
-            Text("OpenRouter API Key")
-        }
-
-    }
-
-    private var modelTableSection: some View {
-        Table(modelManager.models, selection: $selection) {
-            TableColumn("Name", value: \.name).width(min: 100) 
-            TableColumn("ID", value: \.id).width(min: 150)
-            TableColumn("Description") { model in
-                Text(model.description.isEmpty ? "-" : model.description) 
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }.width(min: 100)
-            TableColumn("Badge") { model in
-                 if let badge = model.badge, !badge.isEmpty {
-                     Text(badge.uppercased()) 
-                         .font(.caption)
-                         .padding(.horizontal, 5)
-                         .padding(.vertical, 2)
-                         .background(Color.secondary.opacity(0.15))
-                         .cornerRadius(5)
-                         .foregroundColor(.secondary)
-                 } else {
-                     Text("-") 
-                 }
-            }.width(ideal: 60) 
-        }
-        .frame(minHeight: 150, idealHeight: 200) 
-    }
-
-    private var modelActionButtons: some View {
-        HStack {
-
-            Button {
-                showingAddModelSheet = true
-            } label: {
-                Image(systemName: "plus")
-            }
-            .buttonStyle(.bordered) 
-            .help("Add a new model")
-
-            Button {
-                removeSelectedModels()
-            } label: {
-                Image(systemName: "minus")
-            }
-            .buttonStyle(.bordered) 
-            .disabled(selection.isEmpty)
-            .help("Remove selected model(s)")
-
-            Spacer() 
-        }
-
     }
 
     private func removeSelectedModels() {
         let modelsToRemove = modelManager.models.filter { selection.contains($0.id) }
-        modelManager.models.removeAll { modelsToRemove.contains($0) } 
+        modelManager.models.removeAll { modelsToRemove.contains($0) }
         selection.removeAll()
+    }
+}
+
+struct ModelDropDelegate: DropDelegate {
+    let item: ModelOption
+    @Binding var models: [ModelOption]
+    @Binding var draggingItem: ModelOption?
+
+    func dropEntered(info: DropInfo) {
+        guard
+            let draggingItem = draggingItem,
+            draggingItem != item,
+            let fromIndex = models.firstIndex(of: draggingItem),
+            let toIndex = models.firstIndex(of: item)
+        else {
+            return
+        }
+        if models[toIndex] != draggingItem {
+            withAnimation {
+                models.move(fromOffsets: IndexSet(integer: fromIndex),
+                            toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
+            }
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggingItem = nil
+        return true
     }
 }
 
@@ -131,51 +159,49 @@ struct AddModelView: View {
     @State private var errorMessage = ""
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Add New Model")
+                .font(.title2)
+                .padding()
+            Divider()
 
-        Form {
-            Section { 
-                LabeledContent("Model ID") {
-                    TextField("unique-id (e.g., provider/model)", text: $modelId)
+            Form {
+                Section {
+                    TextField("Model ID (e.g., provider/model)", text: $modelId)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Display Name", text: $modelName)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Description (optional)", text: $modelDescription)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Badge (optional)", text: $modelBadge)
                         .textFieldStyle(.roundedBorder)
                 }
-                LabeledContent("Display Name") {
-                    TextField("User-Friendly Name", text: $modelName)
-                        .textFieldStyle(.roundedBorder)
-                }
-                LabeledContent("Description") {
-                    TextField("Optional details", text: $modelDescription)
-                        .textFieldStyle(.roundedBorder)
-                }
-                LabeledContent("Badge") {
-                    TextField("Optional short tag (e.g., FREE)", text: $modelBadge)
-                        .textFieldStyle(.roundedBorder)
+
+                if showError {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.callout)
+                    }
                 }
             }
+            .padding()
 
-            if showError {
-                 Section { 
-                     Text(errorMessage)
-                         .foregroundColor(.red)
-                         .font(.callout) 
-                 }
-            }
-        }
-        .padding()
-        .frame(minWidth: 350, idealWidth: 400) 
-        .navigationTitle("Add New Model") 
-        .toolbar { 
-            ToolbarItem(placement: .cancellationAction) {
+            Divider()
+            HStack {
+                Spacer()
                 Button("Cancel") {
                     dismiss()
                 }
-            }
-            ToolbarItem(placement: .confirmationAction) {
                 Button("Add") {
                     addModel()
                 }
-                .disabled(modelId.isEmpty || modelName.isEmpty) 
+                .keyboardShortcut(.defaultAction)
+                .disabled(modelId.isEmpty || modelName.isEmpty)
             }
+            .padding()
         }
+        .frame(minWidth: 350, idealWidth: 400)
     }
 
     private func addModel() {
@@ -186,25 +212,20 @@ struct AddModelView: View {
         }
 
         if modelManager.models.contains(where: { $0.id.lowercased() == modelId.lowercased() }) {
-             errorMessage = "A model with this ID already exists."
-             showError = true
-             return
+            errorMessage = "A model with this ID already exists."
+            showError = true
+            return
         }
 
         let newModel = ModelOption(
             id: modelId.trimmingCharacters(in: .whitespacesAndNewlines),
             name: modelName.trimmingCharacters(in: .whitespacesAndNewlines),
             description: modelDescription.trimmingCharacters(in: .whitespacesAndNewlines),
-            badge: modelBadge.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : modelBadge.trimmingCharacters(in: .whitespacesAndNewlines)
+            badge: modelBadge.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? nil
+                : modelBadge.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         modelManager.addModel(newModel)
         dismiss()
-    }
-}
-
-struct ConfigurationView_Previews: PreviewProvider {
-    static var previews: some View {
-        ConfigurationView()
-            .environmentObject(ModelManager()) 
     }
 }

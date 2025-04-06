@@ -66,7 +66,7 @@ struct DetailContainer<Content: View>: View {
     }
 }
 
-struct ModelOption: Identifiable, Codable, Hashable, Equatable {
+struct ModelOption: Identifiable, Codable, Equatable {
     var id: String 
     var name: String
     var description: String
