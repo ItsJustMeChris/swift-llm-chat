@@ -1,7 +1,12 @@
 import Foundation
+// No need to import SwiftUI here anymore
 
 func streamAssistantResponse(for chatSession: ChatSession) async throws -> AsyncThrowingStream<String, Error> {
-    let apiKey = "sk-or-v1-"
+    // Retrieve the API key directly from UserDefaults
+    guard let apiKey = UserDefaults.standard.string(forKey: "openRouterApiKey"), !apiKey.isEmpty else {
+        // Handle the case where the API key is not set or empty
+        throw NSError(domain: "ChatAPIManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "OpenRouter API Key not configured or is empty. Please set it in Settings."])
+    }
     let client = OpenAIChat(apiKey: apiKey, baseURL: URL(string: "https://openrouter.ai/api")!)
     
     let messages = chatSession.messages.map { msg in
@@ -37,7 +42,11 @@ func streamAssistantResponse(for chatSession: ChatSession) async throws -> Async
 }
 
 func streamChatName(for chatSession: ChatSession) async throws -> AsyncThrowingStream<String, Error> {
-    let apiKey = "sk-or-v1-"
+    // Retrieve the API key directly from UserDefaults
+    guard let apiKey = UserDefaults.standard.string(forKey: "openRouterApiKey"), !apiKey.isEmpty else {
+        // Handle the case where the API key is not set or empty
+        throw NSError(domain: "ChatAPIManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "OpenRouter API Key not configured or is empty. Please set it in Settings."])
+    }
     let client = OpenAIChat(apiKey: apiKey, baseURL: URL(string: "https://openrouter.ai/api")!)
     
     let firstUserMessage = chatSession.messages.first(where: { $0.sender == .user })?.text ?? ""

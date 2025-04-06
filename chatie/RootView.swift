@@ -2,15 +2,17 @@ import SwiftUI
 
 struct RootView: View {
     @StateObject private var viewModel = ChatSessionsViewModel()
+    // Access the ModelManager from the environment
+    @EnvironmentObject var modelManager: ModelManager
     
-    let availableModels: [ModelOption] = [
-        .init(id: "openrouter/quasar-alpha", name: "Quasar Alpha", description: "Probably gpt-os", badge: "???", isDisabled: false),
-        .init(id: "meta-llama/llama-4-maverick:free", name: "Llama 4 Maverick", description: "LLAMA 4 FREE", badge: "LLAMA", isDisabled: false),
-    ]
-    
-    let defaultModel = ModelOption(id: "openrouter/quasar-alpha", name: "Quasar Alpha", description: "Probably gpt-os", badge: "wOw", isDisabled: false)
+    // Remove hardcoded models
+    // let availableModels: [ModelOption] = [...]
+    // let defaultModel = ...
     
     var body: some View {
+        // Ensure there's a default model available from the manager
+        let currentDefaultModel = modelManager.getDefaultModel() ?? ModelOption(id: "error/no-models", name: "Error", description: "No models configured")
+
         NavigationSplitView {
             SidebarView()
                 .environmentObject(viewModel)
@@ -24,12 +26,14 @@ struct RootView: View {
                             ToolbarItem(placement: .navigation) {
                                 CustomModelPickerButton(
                                     selectedModel: Binding<ModelOption>(
-                                        get: { selectedChat.model ?? defaultModel },
+                                        // Use the manager's default if chat session has no model
+                                        get: { selectedChat.model ?? currentDefaultModel },
                                         set: { newModel in
                                             selectedChat.model = newModel
                                         }
                                     ),
-                                    options: availableModels
+                                    // Use models from the manager
+                                    options: modelManager.models
                                 )
                             }
                         }
@@ -65,17 +69,39 @@ struct DetailContainer<Content: View>: View {
     }
 }
 
-struct ModelOption: Identifiable, Equatable {
-    var id: String
-    let name: String
-    let description: String
-    let badge: String?
-    let isDisabled: Bool
+// Make ModelOption Codable for storage and Hashable for lists/ForEach
+struct ModelOption: Identifiable, Codable, Hashable, Equatable {
+    var id: String // Keep as var if editing ID is needed, else let
+    var name: String
+    var description: String
+    var badge: String? // Optional badge
 
+    // Conformance for Identifiable (already implicitly via id)
+    // Conformance for Equatable
     static func == (lhs: ModelOption, rhs: ModelOption) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id &&
+        lhs.name == rhs.name &&
+        lhs.description == rhs.description &&
+        lhs.badge == rhs.badge
+    }
+    
+    // Conformance for Hashable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(name)
+        hasher.combine(description)
+        hasher.combine(badge)
+    }
+    
+    // Example initializer (can be customized)
+    init(id: String, name: String, description: String, badge: String? = nil) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.badge = badge
     }
 }
+
 
 struct CustomModelPickerButton: View {
     @Binding var selectedModel: ModelOption
@@ -131,18 +157,18 @@ struct CustomModelPickerPopover: View {
             ScrollView {
                 VStack(spacing: 6) {
                     ForEach(options) { option in
+                        // Removed check for option.isDisabled
                         Button {
-                            if !option.isDisabled {
-                                selectedModel = option
-                                isOpen = false
-                            }
+                            selectedModel = option
+                            isOpen = false
                         } label: {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     HStack(spacing: 6) {
                                         Text(option.name)
                                             .fontWeight(.semibold)
-                                            .foregroundColor(option.isDisabled ? .gray : .primary)
+                                            // Removed conditional foregroundColor based on isDisabled
+                                            .foregroundColor(.primary) 
 
                                         if let badge = option.badge {
                                             Text(badge.uppercased())
@@ -162,7 +188,8 @@ struct CustomModelPickerPopover: View {
 
                                 Spacer()
 
-                                if selectedModel == option && !option.isDisabled {
+                                // Removed check for option.isDisabled
+                                if selectedModel == option {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.accentColor)
                                 }
@@ -174,7 +201,7 @@ struct CustomModelPickerPopover: View {
                                     .fill(option == selectedModel ? Color.accentColor.opacity(0.1) : Color.clear)
                             )
                         }
-                        .disabled(option.isDisabled)
+                        // Removed .disabled modifier
                         .buttonStyle(.plain)
                     }
                 }
