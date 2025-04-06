@@ -23,6 +23,7 @@ class IntrinsicScrollView: NSScrollView {
 
 struct OptimizedStreamedText: NSViewRepresentable {
     @Binding var text: String
+    var availableWidth: CGFloat
 
     func makeNSView(context: Context) -> IntrinsicScrollView {
         let scrollView = IntrinsicScrollView()
@@ -50,15 +51,15 @@ struct OptimizedStreamedText: NSViewRepresentable {
     func updateNSView(_ nsView: IntrinsicScrollView, context: Context) {
         guard let textView = nsView.documentView as? IntrinsicTextView else { return }
         textView.string = text
-
-        let currentWidth = nsView.bounds.width
+        
+        let currentWidth = availableWidth
         
         textView.textContainer?.containerSize = NSSize(width: currentWidth, height: .greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
 
         textView.layoutManager?.ensureLayout(for: textView.textContainer!)
         let newSize = textView.intrinsicContentSize
-        
+
         textView.frame = NSRect(x: 0, y: 0, width: currentWidth, height: newSize.height)
         
         nsView.invalidateIntrinsicContentSize()
@@ -72,7 +73,7 @@ struct ChatBubble: View {
     var body: some View {
         HStack {
             if message.sender == .assistant {
-                OptimizedStreamedText(text: $message.text)
+                OptimizedStreamedText(text: $message.text, availableWidth: parentWidth - 24)
                     .padding(12)
                     .frame(maxWidth: parentWidth, alignment: .leading)
                     .background(Color(NSColor.windowBackgroundColor))
