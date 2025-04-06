@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		83BAE7892DA2ECE9009EC17F /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 83BAE7882DA2ECE9009EC17F /* MarkdownUI */; };
+		83BAE78C2DA2ECF9009EC17F /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 83BAE78B2DA2ECF9009EC17F /* Splash */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		835ACE4B2D9F4650007C2DBB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				83BAE7892DA2ECE9009EC17F /* MarkdownUI in Frameworks */,
+				83BAE78C2DA2ECF9009EC17F /* Splash in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = chatie;
 			packageProductDependencies = (
+				83BAE7882DA2ECE9009EC17F /* MarkdownUI */,
+				83BAE78B2DA2ECF9009EC17F /* Splash */,
 			);
 			productName = sidebarify;
 			productReference = 835ACE3C2D9F464F007C2DBB /* chatie.app */;
@@ -196,6 +205,8 @@
 			mainGroup = 835ACE332D9F464F007C2DBB;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				83BAE7872DA2ECE9009EC17F /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+				83BAE78A2DA2ECF9009EC17F /* XCRemoteSwiftPackageReference "Splash" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 835ACE3D2D9F464F007C2DBB /* Products */;
@@ -559,6 +570,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		83BAE7872DA2ECE9009EC17F /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
+		83BAE78A2DA2ECF9009EC17F /* XCRemoteSwiftPackageReference "Splash" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/JohnSundell/Splash";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.16.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		83BAE7882DA2ECE9009EC17F /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 83BAE7872DA2ECE9009EC17F /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+		83BAE78B2DA2ECF9009EC17F /* Splash */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 83BAE78A2DA2ECF9009EC17F /* XCRemoteSwiftPackageReference "Splash" */;
+			productName = Splash;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 835ACE342D9F464F007C2DBB /* Project object */;
 }

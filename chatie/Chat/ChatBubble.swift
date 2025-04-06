@@ -1,82 +1,96 @@
+import MarkdownUI
+import Splash
 import SwiftUI
 
-struct FadeInTextWithDelay: View {
-    let text: String
-    let delay: Double
-    @State private var hasAnimated: Bool = false
+struct TextOutputFormat: OutputFormat {
+    private let theme: Splash.Theme
 
-    var body: some View {
-        Text(text)
-            .opacity(hasAnimated ? 1 : 0)
-            .onAppear {
-                if !hasAnimated {
-                    withAnimation(Animation.easeIn(duration: 0.3).delay(delay)) {
-                        hasAnimated = true
-                    }
-                }
-            }
+    init(theme: Splash.Theme) {
+        self.theme = theme
+    }
+
+    func makeBuilder() -> Builder {
+        Builder(theme: self.theme)
     }
 }
 
-struct AnimatedTokenLine: View {
-    let line: String
+extension TextOutputFormat {
+    struct Builder: OutputBuilder {
+        private let theme: Splash.Theme
+        private var accumulatedText: [Text]
 
-    private var tokens: [String] {
-        line.split(separator: " ", omittingEmptySubsequences: false).map { String($0) }
-    }
-
-    private var groupedTokens: [[String]] {
-        let groupSize = tokens.count > 20 ? 20 : 5
-        return stride(from: 0, to: tokens.count, by: groupSize).map { start in
-            Array(tokens[start..<min(start + groupSize, tokens.count)])
+        fileprivate init(theme: Splash.Theme) {
+            self.theme = theme
+            self.accumulatedText = []
         }
-    }
 
-    var body: some View {
-        LazyHStack(spacing: 0) {
+        mutating func addToken(_ token: String, ofType type: TokenType) {
+            let color = self.theme.tokenColors[type] ?? self.theme.plainTextColor
+            self.accumulatedText.append(Text(token).foregroundColor(.init(color)))
+        }
 
-            ForEach(Array(groupedTokens.enumerated()), id: \.offset) { groupIndex, tokenGroup in
-                HStack(spacing: 0) {
+        mutating func addPlainText(_ text: String) {
+            self.accumulatedText.append(
+                Text(text).foregroundColor(.init(self.theme.plainTextColor))
+            )
+        }
 
-                    ForEach(Array(tokenGroup.enumerated()), id: \.offset) { tokenIndex, token in
-                        FadeInTextWithDelay(
-                            text: token + " ",
-                            delay: Double(groupIndex) * 0.15 + Double(tokenIndex) * 0.05
-                        )
-                    }
-                }
-            }
+        mutating func addWhitespace(_ whitespace: String) {
+            self.accumulatedText.append(Text(whitespace))
+        }
+
+        func build() -> Text {
+            self.accumulatedText.reduce(Text(""), +)
         }
     }
 }
 
-struct StaticTokenLine: View {
-    let line: String
-    var body: some View {
-        Text(line)
+struct SplashCodeSyntaxHighlighter: CodeSyntaxHighlighter {
+    private let syntaxHighlighter: SyntaxHighlighter<TextOutputFormat>
+
+    init(theme: Splash.Theme) {
+        self.syntaxHighlighter = SyntaxHighlighter(format: TextOutputFormat(theme: theme))
+    }
+
+    func highlightCode(_ content: String, language: String?) -> Text {
+        guard language != nil else {
+            return Text(content)
+        }
+        return self.syntaxHighlighter.highlight(content)
     }
 }
 
-struct AnimatedStreamedText: View {
-    let textBlocks: [String]
-    let openBlock: String
+extension CodeSyntaxHighlighter where Self == SplashCodeSyntaxHighlighter {
+    static func splash(theme: Splash.Theme) -> Self {
+        SplashCodeSyntaxHighlighter(theme: theme)
+    }
+}
+
+struct MarkdownStreamedText: View {
+    let finalizedText: String
+    let streamingText: String
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
 
-            ForEach(textBlocks.indices.dropLast(), id: \.self) { index in
-                StaticTokenLine(line: textBlocks[index])
-            }
+            Markdown(finalizedText)
+                .markdownCodeSyntaxHighlighter(.splash(theme: splashTheme))
+                .fixedSize(horizontal: false, vertical: true)
 
-            if let last = textBlocks.last {
-                AnimatedTokenLine(line: last)
-            }
-
-            if !openBlock.isEmpty {
-                AnimatedTokenLine(line: openBlock)
-            }
+            Markdown(streamingText)
+                .markdownCodeSyntaxHighlighter(.splash(theme: splashTheme))
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .drawingGroup()
+    }
+
+    private var splashTheme: Splash.Theme {
+        switch colorScheme {
+        case .dark:
+            return .wwdc17(withFont: .init(size: 16))
+        default:
+            return .sunset(withFont: .init(size: 16))
+        }
     }
 }
 
@@ -87,11 +101,14 @@ struct ChatBubble: View {
     var body: some View {
         HStack {
             if message.sender == .assistant {
-                AnimatedStreamedText(textBlocks: message.textBlocks, openBlock: message.openBlock)
-                    .padding(12)
-                    .frame(maxWidth: parentWidth, alignment: .leading)
-                    .background(Color(NSColor.windowBackgroundColor))
-                    .cornerRadius(12)
+                MarkdownStreamedText(
+                    finalizedText: message.textBlocks.joined(separator: "\n"),
+                    streamingText: message.openBlock
+                )
+                .padding(12)
+                .frame(maxWidth: parentWidth, alignment: .leading)
+                .background(Color(NSColor.windowBackgroundColor))
+                .cornerRadius(12)
             } else {
                 Spacer(minLength: 0)
                 Text(message.text)
