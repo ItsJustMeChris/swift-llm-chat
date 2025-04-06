@@ -5,10 +5,22 @@ class CustomNSTextView: NSTextView {
     var onSend: (() -> Void)?
     var placeholder: String = "type anything..."
     var placeholderColor: NSColor = .placeholderTextColor
+    var autoFocus: Bool = false
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if autoFocus, let currentWindow = self.window {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self = self, let win = self.window else { return }
+                if win === currentWindow && win.firstResponder !== self {
+                    win.makeFirstResponder(self)
+                }
+            }
+        }
+    }
+    
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        
         if string.isEmpty {
             let insets = textContainerInset
             let linePadding = textContainer?.lineFragmentPadding ?? 0
@@ -72,7 +84,6 @@ struct GrowingTextView: NSViewRepresentable {
         textView.isHorizontallyResizable = false
         
         textView.isRichText = false
-        
         textView.textContainerInset = NSSize(width: 4, height: 6)
         textView.textContainer?.lineFragmentPadding = 0
         
@@ -82,6 +93,7 @@ struct GrowingTextView: NSViewRepresentable {
         textView.string = text
         textView.onSend = onSend
         textView.placeholder = "type anything..."
+        textView.autoFocus = autoFocus
         
         if let container = textView.textContainer {
             container.containerSize = NSSize(width: scrollView.contentSize.width,
@@ -116,18 +128,10 @@ struct GrowingTextView: NSViewRepresentable {
                 self.dynamicHeight = newHeight
             }
         }
-        
-        if autoFocus && !context.coordinator.didBecomeFirstResponder, let window = textView.window {
-            DispatchQueue.main.async {
-                window.makeFirstResponder(textView)
-                context.coordinator.didBecomeFirstResponder = true
-            }
-        }
     }
     
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: GrowingTextView
-        var didBecomeFirstResponder = false
         
         init(_ parent: GrowingTextView) {
             self.parent = parent
