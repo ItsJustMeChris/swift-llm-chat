@@ -196,7 +196,6 @@
 			mainGroup = 835ACE332D9F464F007C2DBB;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				8327000C2DA0761D00E99DA6 /* XCLocalSwiftPackageReference "../llama" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 835ACE3D2D9F464F007C2DBB /* Products */;
@@ -560,13 +559,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		8327000C2DA0761D00E99DA6 /* XCLocalSwiftPackageReference "../llama" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../llama;
-		};
-/* End XCLocalSwiftPackageReference section */
 	};
 	rootObject = 835ACE342D9F464F007C2DBB /* Project object */;
 }
