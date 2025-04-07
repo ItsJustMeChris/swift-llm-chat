@@ -36,7 +36,7 @@ struct ChatView: View {
                             scrollViewProxy.scrollTo(bottomID, anchor: .bottom)
                         }
                     }
-                    
+
                     ChatInputBar(
                         message: $message,
                         onSend: sendMessage,
@@ -61,30 +61,38 @@ struct ChatView: View {
         message = ""
 
         let userMsg = ChatMessageViewModel(sender: .user, initialText: messageText)
+
         withAnimation {
             chatSession.messages.append(userMsg)
         }
-        chatSession.lastActivity = Date()
-        viewModel.refreshTrigger.toggle()
+
+        viewModel.chatDidChange(chatSession)
 
         let userMessageCount = chatSession.messages.filter { $0.sender == .user }.count
         if userMessageCount == 1 {
             Task {
                 do {
                     let namingStream = try await streamChatName(for: chatSession)
+
                     for try await _ in namingStream {}
+
+                    await MainActor.run { 
+                         viewModel.chatDidChange(chatSession)
+                    }
                 } catch {
                     print("Chat naming stream error: \(error)")
+
                 }
             }
         }
 
         let assistantMessage = ChatMessageViewModel(sender: .assistant)
+
         withAnimation {
             chatSession.messages.append(assistantMessage)
         }
-        chatSession.lastActivity = Date()
-        viewModel.refreshTrigger.toggle()
+
+        viewModel.chatDidChange(chatSession)
 
         isStreaming = true
         streamingTask = Task {
@@ -108,8 +116,7 @@ struct ChatView: View {
                             }
                         }
                         pendingChunk = ""
-                        chatSession.lastActivity = Date()
-                        viewModel.refreshTrigger.toggle()
+
                     }
                 }
 
@@ -145,9 +152,12 @@ struct ChatView: View {
             } catch {
                 print("Streaming error: \(error)")
             }
+
             await MainActor.run {
                 isStreaming = false
                 streamingTask = nil
+
+                viewModel.chatDidChange(chatSession)
             }
         }
     }
@@ -155,6 +165,11 @@ struct ChatView: View {
     private func stopStreaming() {
         streamingTask?.cancel()
         streamingTask = nil
-        isStreaming = false
+
+        Task { @MainActor in
+             isStreaming = false
+
+             viewModel.chatDidChange(chatSession)
+        }
     }
 }

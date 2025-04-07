@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct RootView: View {
-    @StateObject private var viewModel = ChatSessionsViewModel()
 
+    @EnvironmentObject var chatSessionsViewModel: ChatSessionsViewModel
     @EnvironmentObject var modelManager: ModelManager
 
     var body: some View {
@@ -10,23 +10,31 @@ struct RootView: View {
         let currentDefaultModel = modelManager.getDefaultModel() ?? ModelOption(id: "error/no-models", name: "Error", description: "No models configured")
 
         NavigationSplitView {
+
             SidebarView()
-                .environmentObject(viewModel)
+
                 .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 300)
         } detail: {
             NavigationStack {
-                if let selectedChat = viewModel.selectedChat() {
+
+                if let selectedChat = chatSessionsViewModel.selectedChat() {
+
                     ChatView(chatSession: selectedChat)
-                        .environmentObject(viewModel)
-                        .id(selectedChat.id)
+
+                        .id(selectedChat.id) 
                         .toolbar {
                             ToolbarItem(placement: .navigation) {
+
                                 CustomModelPickerButton(
                                     selectedModel: Binding<ModelOption>(
 
                                         get: { selectedChat.model ?? currentDefaultModel },
                                         set: { newModel in
-                                            selectedChat.model = newModel
+                                            if selectedChat.model != newModel {
+                                                selectedChat.model = newModel
+
+                                                chatSessionsViewModel.chatDidChange(selectedChat)
+                                            }
                                         }
                                     ),
 
@@ -35,20 +43,35 @@ struct RootView: View {
                             }
                         }
                 } else {
-                    ContentArea()
+
+                    ContentArea(chatSessionsViewModel: chatSessionsViewModel) 
                 }
             }
-            .navigationTitle("")
+            .navigationTitle("") 
+        }
+
+        .onChange(of: modelManager.models) { newModels in
+             chatSessionsViewModel.setAvailableModels(newModels)
         }
     }
 }
 
 struct ContentArea: View {
+
+    @ObservedObject var chatSessionsViewModel: ChatSessionsViewModel
+
     var body: some View {
-        Text("Welcome! Select or create a Chat in the sidebar.")
-            .font(.title)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.gray.opacity(0.1))
+        VStack {
+            Text("No Chat Selected")
+                .font(.title)
+                .foregroundColor(.secondary)
+            Button("Create New Chat") {
+                chatSessionsViewModel.addNewChat()
+            }
+            .padding(.top)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.gray.opacity(0.05)) 
     }
 }
 
@@ -66,36 +89,8 @@ struct DetailContainer<Content: View>: View {
     }
 }
 
-struct ModelOption: Identifiable, Codable, Equatable {
-    var id: String 
-    var name: String
-    var description: String
-    var badge: String? 
-
-    static func == (lhs: ModelOption, rhs: ModelOption) -> Bool {
-        lhs.id == rhs.id &&
-        lhs.name == rhs.name &&
-        lhs.description == rhs.description &&
-        lhs.badge == rhs.badge
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-        hasher.combine(name)
-        hasher.combine(description)
-        hasher.combine(badge)
-    }
-
-    init(id: String, name: String, description: String, badge: String? = nil) {
-        self.id = id
-        self.name = name
-        self.description = description
-        self.badge = badge
-    }
-}
-
 struct CustomModelPickerButton: View {
-    @Binding var selectedModel: ModelOption
+    @Binding var selectedModel: ModelOption 
     @State private var isOpen = false
     let options: [ModelOption]
 
