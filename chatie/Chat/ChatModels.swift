@@ -55,33 +55,28 @@ class ChatMessageViewModel: ObservableObject, Identifiable {
         self.text = text
 
         if !text.isEmpty {
-
              self.textBlocks = [text]
         }
     }
 
     convenience init(from data: ChatMessageData) {
-
         self.init(id: data.id, sender: data.sender, text: data.text)
     }
 
     func appendToOpenBlock(_ chunk: String) {
         self.openBlock += chunk
-
         self.text = (textBlocks + [openBlock]).joined()
     }
 
     func finalizeOpenBlock() {
         if !openBlock.isEmpty {
             textBlocks.append(openBlock)
-
             self.text = textBlocks.joined()
             openBlock = ""
         }
     }
 
     func toData() -> ChatMessageData {
-
         return ChatMessageData(id: self.id, sender: self.sender, text: self.text)
     }
 }
@@ -103,7 +98,6 @@ class ChatSession: ObservableObject, Identifiable {
 
     convenience init(from data: ChatSessionData, availableModels: [ModelOption]) {
         let messageVMs = data.messages.map { ChatMessageViewModel(from: $0) }
-
         let modelOption = availableModels.first { $0.id == data.modelId }
         self.init(id: data.id, title: data.title, messages: messageVMs, model: modelOption, lastModified: data.lastModified)
     }
@@ -127,6 +121,8 @@ class ChatSession: ObservableObject, Identifiable {
 }
 
 class ChatSessionsViewModel: ObservableObject {
+    static let shared = ChatSessionsViewModel(modelManager: ModelManager.shared)
+    
     @Published var chats: [ChatSession] = []
     @Published var selectedChatID: UUID?
     @Published var scrollToChatID: UUID? = nil
@@ -144,7 +140,6 @@ class ChatSessionsViewModel: ObservableObject {
         Task {
             await loadChats()
             await MainActor.run {
-
                 if self.selectedChatID == nil {
                     self.selectedChatID = self.chats.first?.id
                 }

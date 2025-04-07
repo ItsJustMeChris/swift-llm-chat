@@ -3,6 +3,8 @@ import Combine
 import SwiftUI
 
 class ModelManager: ObservableObject {
+    static let shared = ModelManager()
+    
     @Published var models: [ModelOption] = [] {
         didSet {
             saveModels()
@@ -22,7 +24,7 @@ class ModelManager: ObservableObject {
     }
 
     func addModel(_ model: ModelOption) {
-        if !models.contains(where: { $0.id == model.id }) {
+        if (!models.contains(where: { $0.id == model.id })) {
             models.append(model)
         } else {
             print("Model with ID \(model.id) already exists.")
