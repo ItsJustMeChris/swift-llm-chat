@@ -55,7 +55,7 @@ class StatusBarManager: ObservableObject {
         }
 
         let window = ChatWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 380, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 650),
             styleMask: [.borderless, .resizable],
             backing: .buffered,
             defer: false
@@ -73,7 +73,6 @@ class StatusBarManager: ObservableObject {
 
         let hostingController = NSHostingController(
             rootView: StatusBarChatView()
-                .environmentObject(ChatSessionsViewModel.shared)
                 .environmentObject(ModelManager.shared)
         )
 

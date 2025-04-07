@@ -29,7 +29,7 @@ struct StatusBarChatView: View {
                         selectedModel: Binding<ModelOption>(
                             get: {
                                 currentChat.model ?? modelManager.getDefaultModel() ??
-                                    ModelOption(id: "default", name: "Default", description: "Default Model")
+                                ModelOption(id: "default", name: "Default", description: "Default Model")
                             },
                             set: { newModel in
                                 if currentChat.model != newModel {
@@ -95,45 +95,36 @@ struct StatusBarChatView: View {
             .padding(.vertical, 6)
             .textFieldStyle(RoundedBorderTextFieldStyle())
         }
-        .frame(minWidth: 360, idealWidth: 400, maxWidth: .infinity,
-               minHeight: 300, idealHeight: 420, maxHeight: .infinity)
+        .frame(width: 400, height: 650)
         .background(Color(NSColor.windowBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .onAppear {
-            setupCurrentChat()
-        }
-    }
-
-    private func setupCurrentChat() {
-        if currentChat == nil {
-            if let selectedChat = chatSessionsViewModel.selectedChat() {
-                currentChat = selectedChat
-            } else {
-                Task {
-                    await chatSessionsViewModel.addNewChat()
-                    await MainActor.run {
-                        currentChat = chatSessionsViewModel.selectedChat()
-                    }
-                }
-            }
-        }
     }
 
     private func sendMessage() {
         guard !message.isEmpty else { return }
 
-        setupCurrentChat()
-        guard let chat = currentChat else { return }
+        if currentChat == nil {
+            Task {
+                await chatSessionsViewModel.addNewChat()
+                await MainActor.run {
+                    currentChat = chatSessionsViewModel.selectedChat()
+                    processMessage()
+                }
+            }
+        } else {
+            processMessage()
+        }
+    }
 
+    private func processMessage() {
+        guard let chat = currentChat else { return }
         let messageText = message
         message = ""
 
         let userMsg = ChatMessageViewModel(sender: .user, text: messageText)
-
         withAnimation {
             chat.messages.append(userMsg)
         }
-
         Task {
             await chatSessionsViewModel.chatDidChange(chat)
         }
@@ -152,11 +143,9 @@ struct StatusBarChatView: View {
         }
 
         let assistantMessage = ChatMessageViewModel(sender: .assistant)
-
         withAnimation {
             chat.messages.append(assistantMessage)
         }
-
         Task {
             await chatSessionsViewModel.chatDidChange(chat)
         }
@@ -165,21 +154,16 @@ struct StatusBarChatView: View {
         streamingTask = Task {
             do {
                 let stream = try await streamAssistantResponse(for: chat)
-
                 for try await partialText in stream {
                     if Task.isCancelled { break }
-
                     await MainActor.run {
                         assistantMessage.appendToOpenBlock(partialText)
                     }
-
                     try? await Task.sleep(nanoseconds: 10_000_000)
                 }
-
                 await MainActor.run {
                     assistantMessage.finalizeOpenBlock()
                 }
-
             } catch {
                 if !(error is CancellationError) {
                     print("Streaming error: \(error)")
@@ -189,7 +173,6 @@ struct StatusBarChatView: View {
                     }
                 }
             }
-
             await Task { @MainActor in
                 isStreaming = false
                 streamingTask = nil
