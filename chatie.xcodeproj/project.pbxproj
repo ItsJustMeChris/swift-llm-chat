@@ -17,14 +17,14 @@
 			containerPortal = 835ACE342D9F464F007C2DBB /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 835ACE3B2D9F464F007C2DBB;
-			remoteInfo = sidebarify;
+			remoteInfo = chatie;
 		};
 		835ACE552D9F4650007C2DBB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 835ACE342D9F464F007C2DBB /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 835ACE3B2D9F464F007C2DBB;
-			remoteInfo = sidebarify;
+			remoteInfo = chatie;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -122,7 +122,7 @@
 				83BAE7882DA2ECE9009EC17F /* MarkdownUI */,
 				83BAE78B2DA2ECF9009EC17F /* Splash */,
 			);
-			productName = sidebarify;
+			productName = chatie;
 			productReference = 835ACE3C2D9F464F007C2DBB /* chatie.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -145,7 +145,7 @@
 			name = chatieTests;
 			packageProductDependencies = (
 			);
-			productName = sidebarifyTests;
+			productName = chatieTests;
 			productReference = 835ACE4A2D9F4650007C2DBB /* chatieTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
@@ -168,7 +168,7 @@
 			name = chatieUITests;
 			packageProductDependencies = (
 			);
-			productName = sidebarifyUITests;
+			productName = chatieUITests;
 			productReference = 835ACE542D9F4650007C2DBB /* chatieUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
@@ -476,7 +476,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/sidebarify.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/sidebarify";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/chatie.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/chatie";
 			};
 			name = Debug;
 		};
@@ -494,7 +494,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/sidebarify.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/sidebarify";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/chatie.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/chatie";
 			};
 			name = Release;
 		};
@@ -510,7 +510,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = sidebarify;
+				TEST_TARGET_NAME = chatie;
 			};
 			name = Debug;
 		};
@@ -526,7 +526,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = sidebarify;
+				TEST_TARGET_NAME = chatie;
 			};
 			name = Release;
 		};
