@@ -2,6 +2,10 @@
 
 Open source OpenRouter-powered LLM Chat app.
 
+[![Latest Release](https://img.shields.io/github/v/release/ItsJustMeChris/swift-llm-chat?label=release)](https://github.com/ItsJustMeChris/swift-llm-chat/releases/latest)
+[![License](https://img.shields.io/github/license/ItsJustMeChris/swift-llm-chat)](https://github.com/ItsJustMeChris/swift-llm-chat/blob/main/LICENSE)
+
+
 ![Chatie GIF](./chatie.gif)
 
 ## Features
@@ -15,6 +19,3 @@ Open source OpenRouter-powered LLM Chat app.
 - **Companion Widget** – macOS topbar assistant / quick-access chat
 - **File & Image Upload Support**
 - **Multi-Provider Support** – Use other APIs like OpenAI or Claude directly
-
-[![Latest Release](https://img.shields.io/github/v/release/ItsJustMeChris/swift-llm-chat?label=release)](https://github.com/ItsJustMeChris/swift-llm-chat/releases/latest)
-[![License](https://img.shields.io/github/license/ItsJustMeChris/swift-llm-chat)](https://github.com/ItsJustMeChris/swift-llm-chat/blob/main/LICENSE)
