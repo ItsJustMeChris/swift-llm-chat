@@ -5,6 +5,8 @@ Open source OpenRouter-powered LLM Chat app.
 [![Latest Release](https://img.shields.io/github/v/release/ItsJustMeChris/swift-llm-chat?label=release)](https://github.com/ItsJustMeChris/swift-llm-chat/releases/latest)
 [![License](https://img.shields.io/github/license/ItsJustMeChris/swift-llm-chat)](https://github.com/ItsJustMeChris/swift-llm-chat/blob/main/LICENSE)
 
+[TestFlight](https://testflight.apple.com/join/puNukh3P)
+
 
 ![Chatie GIF](./chatie.gif)
 
