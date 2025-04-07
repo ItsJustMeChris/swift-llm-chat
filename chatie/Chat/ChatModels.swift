@@ -134,10 +134,12 @@ class ChatSessionsViewModel: ObservableObject {
     @Published var isLoading: Bool = true
 
     private var storageManager = ChatStorageManager()
+    private var modelManager: ModelManager
     private var availableModels: [ModelOption] = []
 
-    init(availableModels: [ModelOption] = []) {
-        self.availableModels = availableModels
+    init(modelManager: ModelManager) {
+        self.modelManager = modelManager
+        self.availableModels = modelManager.models
 
         Task {
             await loadChats()
@@ -175,7 +177,8 @@ class ChatSessionsViewModel: ObservableObject {
     }
 
     func addNewChat() async {
-        let newChat = ChatSession()
+        let defaultModel = modelManager.getDefaultModel()
+        let newChat = ChatSession(model: defaultModel)
 
         await MainActor.run {
             self.chats.insert(newChat, at: 0)

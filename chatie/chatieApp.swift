@@ -12,7 +12,7 @@ struct chatieApp: App {
         let initialModelManager = ModelManager()
         _modelManager = StateObject(wrappedValue: initialModelManager)
 
-        _chatSessionsViewModel = StateObject(wrappedValue: ChatSessionsViewModel(availableModels: initialModelManager.models))
+        _chatSessionsViewModel = StateObject(wrappedValue: ChatSessionsViewModel(modelManager: initialModelManager))
     }
 
     var body: some Scene {
