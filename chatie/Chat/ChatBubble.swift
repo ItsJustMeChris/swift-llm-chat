@@ -79,7 +79,7 @@ struct MarkdownStreamedText: View {
                     self.codeBlock(configuration)
                 }
                 .markdownCodeSyntaxHighlighter(.splash(theme: splashTheme))
-            
+
             Text(streamingText)
                 .foregroundColor(Color(splashTheme.plainTextColor))
                 .frame(minHeight: streamingText.isEmpty ? 0 : nil)
@@ -88,7 +88,7 @@ struct MarkdownStreamedText: View {
         .textSelection(.enabled)
         .fixedSize(horizontal: false, vertical: true)
     }
-    
+
     private func codeBlock(_ configuration: CodeBlockConfiguration) -> some View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 0) {
@@ -113,9 +113,9 @@ struct MarkdownStreamedText: View {
                         .padding(.trailing, 12)
                     }
                 )
-                
+
                 Divider()
-                
+
                 ScrollView(.horizontal) {
                     configuration.label
                         .relativeLineSpacing(.em(0.25))
@@ -131,7 +131,7 @@ struct MarkdownStreamedText: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .markdownMargin(top: .zero, bottom: .em(0.8))
     }
-    
+
     private var splashTheme: Splash.Theme {
         switch colorScheme {
         case .dark:
@@ -140,7 +140,7 @@ struct MarkdownStreamedText: View {
             return .sunset(withFont: .init(size: 16))
         }
     }
-    
+
     private func copyToClipboard(_ string: String) {
         if let pasteboard = NSPasteboard.general as NSPasteboard? {
             pasteboard.clearContents()
@@ -155,21 +155,20 @@ struct ChatBubble: View {
 
     var body: some View {
         HStack {
+
             if message.sender == .assistant {
-                MarkdownStreamedText(
-                    finalizedText: message.textBlocks.joined(separator: "\n"),
-                    streamingText: message.openBlock
-                )
-                .padding(12)
-                .background(Color(NSColor.windowBackgroundColor).opacity(0.9))
+                Markdown(message.text) 
+                    .textSelection(.enabled) 
+                    .padding(12)
+                    .background(Color(NSColor.windowBackgroundColor).opacity(0.9))
                 .cornerRadius(12)
-                .frame(maxWidth: parentWidth, alignment: .leading)
+                    .frame(maxWidth: parentWidth, alignment: .leading) 
             } else {
                 Spacer(minLength: 0)
-                Text(message.text)
+                Markdown(message.text) 
                     .textSelection(.enabled)
                     .padding(12)
-                    .background(Color(NSColor.windowBackgroundColor).opacity(0.9).brightness(0.08))
+                    .background(Color(NSColor.windowBackgroundColor).opacity(0.9).brightness(0.08)) 
                     .cornerRadius(12)
                     .frame(maxWidth: parentWidth * 0.7, alignment: .trailing)
             }

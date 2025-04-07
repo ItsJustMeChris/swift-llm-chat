@@ -45,41 +45,44 @@ class ChatMessageViewModel: ObservableObject, Identifiable {
     let id: UUID
     let sender: Sender
 
-    @Published var textBlocks: [String] = []
-    @Published var openBlock: String = ""
+    @Published var text: String
+    @Published var textBlocks: [String] = [] 
+    @Published var openBlock: String = ""    
 
-    var text: String {
-
-        let combined = textBlocks + (openBlock.isEmpty ? [] : [openBlock])
-        return combined.joined() 
-    }
-
-    init(id: UUID = UUID(), sender: Sender, initialText: String = "") {
+    init(id: UUID = UUID(), sender: Sender, text: String = "") {
         self.id = id
         self.sender = sender
-        if !initialText.isEmpty {
+        self.text = text
 
-            self.textBlocks = [initialText]
+        if !text.isEmpty {
+
+             self.textBlocks = [text]
         }
     }
 
     convenience init(from data: ChatMessageData) {
 
-        self.init(id: data.id, sender: data.sender, initialText: data.text)
+        self.init(id: data.id, sender: data.sender, text: data.text)
+    }
+
+    func appendToOpenBlock(_ chunk: String) {
+        self.openBlock += chunk
+
+        self.text = (textBlocks + [openBlock]).joined()
     }
 
     func finalizeOpenBlock() {
         if !openBlock.isEmpty {
             textBlocks.append(openBlock)
-            openBlock = ""
 
+            self.text = textBlocks.joined()
+            openBlock = ""
         }
     }
 
     func toData() -> ChatMessageData {
 
-        let currentText = (textBlocks + (openBlock.isEmpty ? [] : [openBlock])).joined()
-        return ChatMessageData(id: self.id, sender: self.sender, text: currentText)
+        return ChatMessageData(id: self.id, sender: self.sender, text: self.text)
     }
 }
 

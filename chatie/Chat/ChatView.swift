@@ -60,7 +60,7 @@ struct ChatView: View {
         let messageText = message
         message = ""
 
-        let userMsg = ChatMessageViewModel(sender: .user, initialText: messageText)
+        let userMsg = ChatMessageViewModel(sender: .user, text: messageText) 
 
         withAnimation {
             chatSession.messages.append(userMsg)
@@ -98,59 +98,31 @@ struct ChatView: View {
         streamingTask = Task {
             do {
                 let stream = try await streamAssistantResponse(for: chatSession)
-                let threshold: TimeInterval = 0.1
-                var lastUpdate = Date()
-                var pendingChunk = ""
-                var flushTask: Task<Void, Never>? = nil
-
-                func flushPendingChunk() async {
-                    await MainActor.run {
-                        assistantMessage.openBlock += pendingChunk
-                        if assistantMessage.openBlock.contains("\n") {
-                            let components = assistantMessage.openBlock.split(separator: "\n", omittingEmptySubsequences: false)
-                            if components.count > 1 {
-                                for comp in components.dropLast() {
-                                    assistantMessage.textBlocks.append(String(comp))
-                                }
-                                assistantMessage.openBlock = String(components.last ?? "")
-                            }
-                        }
-                        pendingChunk = ""
-
-                    }
-                }
-
-                func scheduleFlush(after delay: TimeInterval) {
-                    flushTask?.cancel()
-                    flushTask = Task {
-                        try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                        await flushPendingChunk()
-                        lastUpdate = Date()
-                    }
-                }
 
                 for try await partialText in stream {
                     if Task.isCancelled { break }
-                    pendingChunk += partialText
-                    let now = Date()
-                    let timeSinceLast = now.timeIntervalSince(lastUpdate)
-                    if timeSinceLast >= threshold {
-                        flushTask?.cancel()
-                        flushTask = nil
-                        await flushPendingChunk()
-                        lastUpdate = now
-                    } else if flushTask == nil {
-                        scheduleFlush(after: threshold - timeSinceLast)
+
+                    await MainActor.run {
+                        assistantMessage.appendToOpenBlock(partialText)
                     }
+
+                     try? await Task.sleep(nanoseconds: 10_000_000) 
                 }
-                flushTask?.cancel()
-                flushTask = nil
-                await flushPendingChunk()
+
                 await MainActor.run {
                     assistantMessage.finalizeOpenBlock()
                 }
+
             } catch {
-                print("Streaming error: \(error)")
+
+                 if !(error is CancellationError) {
+                      print("Streaming error: \(error)")
+
+                      await MainActor.run {
+                          assistantMessage.text += "\n\nError during streaming."
+                          assistantMessage.finalizeOpenBlock() 
+                      }
+                 }
             }
 
             await MainActor.run {
@@ -163,13 +135,7 @@ struct ChatView: View {
     }
 
     private func stopStreaming() {
-        streamingTask?.cancel()
-        streamingTask = nil
+        streamingTask?.cancel() 
 
-        Task { @MainActor in
-             isStreaming = false
-
-             viewModel.chatDidChange(chatSession)
-        }
     }
 }
