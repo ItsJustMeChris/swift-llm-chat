@@ -2,20 +2,23 @@ import SwiftUI
 
 struct SidebarView: View {
     @EnvironmentObject var viewModel: ChatSessionsViewModel
-    @Namespace var topID 
+    @Namespace var topID
 
     var body: some View {
-        ScrollViewReader { proxy in 
+        ScrollViewReader { proxy in
             List(selection: $viewModel.selectedChatID) {
 
                 Color.clear.frame(height: 0).id(topID)
 
                 ForEach(viewModel.chats) { chat in
                     ChatRow(chat: chat)
-                        .tag(chat.id as UUID?) 
-                        .contextMenu { 
+                        .tag(chat.id as UUID?)
+                        .contextMenu {
                             Button("Delete Chat", role: .destructive) {
-                                viewModel.deleteChat(chat: chat)
+
+                                Task {
+                                    await viewModel.deleteChat(chat: chat)
+                                }
                             }
                         }
                 }
@@ -26,19 +29,24 @@ struct SidebarView: View {
             .toolbar {
                 ToolbarItem(placement: .automatic) {
                     Button {
-                        viewModel.addNewChat()
+
+                        Task {
+                            await viewModel.addNewChat()
+                        }
                     } label: {
                         Image(systemName: "plus")
                     }
                     .help("New Chat")
 
                     .onChange(of: viewModel.scrollToChatID) { newID in
-                        if let idToScroll = newID {
-                            withAnimation {
-                                proxy.scrollTo(idToScroll, anchor: .top)
-                            }
 
-                            viewModel.scrollToChatID = nil
+                        if let idToScroll = newID {
+                            DispatchQueue.main.async {
+                                withAnimation {
+                                    proxy.scrollTo(idToScroll, anchor: .top)
+                                }
+                                viewModel.scrollToChatID = nil
+                            }
                         }
                     }
                 }
@@ -52,15 +60,15 @@ struct SidebarView: View {
 
         var body: some View {
             VStack(alignment: .leading) {
-                Text(chat.title.isEmpty ? "New Chat" : chat.title) 
+                Text(chat.title.isEmpty ? "New Chat" : chat.title)
                     .lineLimit(1)
 
                 if let lastMessageText = chat.messages.last?.text, !lastMessageText.isEmpty {
                     Text(lastMessageText)
                         .font(.caption)
-                        .foregroundColor(.secondary.opacity(0.7)) 
-                        .lineLimit(1) 
-                        .truncationMode(.tail) 
+                        .foregroundColor(.secondary.opacity(0.7))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 } else {
 
                     Text("No messages yet")

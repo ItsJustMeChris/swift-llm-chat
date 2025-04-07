@@ -21,7 +21,7 @@ struct RootView: View {
 
                     ChatView(chatSession: selectedChat)
 
-                        .id(selectedChat.id) 
+                        .id(selectedChat.id)
                         .toolbar {
                             ToolbarItem(placement: .navigation) {
 
@@ -33,7 +33,9 @@ struct RootView: View {
                                             if selectedChat.model != newModel {
                                                 selectedChat.model = newModel
 
-                                                chatSessionsViewModel.chatDidChange(selectedChat)
+                                                Task {
+                                                    await chatSessionsViewModel.chatDidChange(selectedChat)
+                                                }
                                             }
                                         }
                                     ),
@@ -44,14 +46,17 @@ struct RootView: View {
                         }
                 } else {
 
-                    ContentArea(chatSessionsViewModel: chatSessionsViewModel) 
+                    ContentArea(chatSessionsViewModel: chatSessionsViewModel)
                 }
             }
-            .navigationTitle("") 
+            .navigationTitle("")
         }
 
         .onChange(of: modelManager.models) { newModels in
-             chatSessionsViewModel.setAvailableModels(newModels)
+
+            DispatchQueue.main.async {
+                chatSessionsViewModel.setAvailableModels(newModels)
+            }
         }
     }
 }
@@ -66,12 +71,15 @@ struct ContentArea: View {
                 .font(.title)
                 .foregroundColor(.secondary)
             Button("Create New Chat") {
-                chatSessionsViewModel.addNewChat()
+
+                Task {
+                    await chatSessionsViewModel.addNewChat()
+                }
             }
             .padding(.top)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.gray.opacity(0.05)) 
+        .background(Color.gray.opacity(0.05))
     }
 }
 
@@ -90,7 +98,7 @@ struct DetailContainer<Content: View>: View {
 }
 
 struct CustomModelPickerButton: View {
-    @Binding var selectedModel: ModelOption 
+    @Binding var selectedModel: ModelOption
     @State private var isOpen = false
     let options: [ModelOption]
 
@@ -154,7 +162,7 @@ struct CustomModelPickerPopover: View {
                                         Text(option.name)
                                             .fontWeight(.semibold)
 
-                                            .foregroundColor(.primary) 
+                                            .foregroundColor(.primary)
 
                                         if let badge = option.badge {
                                             Text(badge.uppercased())

@@ -28,8 +28,11 @@ struct ChatView: View {
                             .padding(.horizontal)
                         }
                         .onChange(of: chatSession.messages.count) {
-                            withAnimation {
-                                scrollViewProxy.scrollTo(bottomID, anchor: .bottom)
+
+                            DispatchQueue.main.async {
+                                withAnimation {
+                                    scrollViewProxy.scrollTo(bottomID, anchor: .bottom)
+                                }
                             }
                         }
                         .onAppear {
@@ -60,13 +63,15 @@ struct ChatView: View {
         let messageText = message
         message = ""
 
-        let userMsg = ChatMessageViewModel(sender: .user, text: messageText) 
+        let userMsg = ChatMessageViewModel(sender: .user, text: messageText)
 
         withAnimation {
             chatSession.messages.append(userMsg)
         }
 
-        viewModel.chatDidChange(chatSession)
+        Task {
+            await viewModel.chatDidChange(chatSession)
+        }
 
         let userMessageCount = chatSession.messages.filter { $0.sender == .user }.count
         if userMessageCount == 1 {
@@ -76,12 +81,11 @@ struct ChatView: View {
 
                     for try await _ in namingStream {}
 
-                    await MainActor.run { 
-                         viewModel.chatDidChange(chatSession)
-                    }
+                    await Task { @MainActor in
+                        await viewModel.chatDidChange(chatSession)
+                    }.value
                 } catch {
                     print("Chat naming stream error: \(error)")
-
                 }
             }
         }
@@ -92,7 +96,9 @@ struct ChatView: View {
             chatSession.messages.append(assistantMessage)
         }
 
-        viewModel.chatDidChange(chatSession)
+        Task {
+            await viewModel.chatDidChange(chatSession)
+        }
 
         isStreaming = true
         streamingTask = Task {
@@ -106,7 +112,7 @@ struct ChatView: View {
                         assistantMessage.appendToOpenBlock(partialText)
                     }
 
-                     try? await Task.sleep(nanoseconds: 10_000_000) 
+                    try? await Task.sleep(nanoseconds: 10_000_000)
                 }
 
                 await MainActor.run {
@@ -114,28 +120,25 @@ struct ChatView: View {
                 }
 
             } catch {
+                if !(error is CancellationError) {
+                    print("Streaming error: \(error)")
 
-                 if !(error is CancellationError) {
-                      print("Streaming error: \(error)")
-
-                      await MainActor.run {
-                          assistantMessage.text += "\n\nError during streaming."
-                          assistantMessage.finalizeOpenBlock() 
-                      }
-                 }
+                    await MainActor.run {
+                        assistantMessage.text += "\n\nError during streaming."
+                        assistantMessage.finalizeOpenBlock()
+                    }
+                }
             }
 
-            await MainActor.run {
+            await Task { @MainActor in
                 isStreaming = false
                 streamingTask = nil
-
-                viewModel.chatDidChange(chatSession)
-            }
+                await viewModel.chatDidChange(chatSession)
+            }.value
         }
     }
 
     private func stopStreaming() {
-        streamingTask?.cancel() 
-
+        streamingTask?.cancel()
     }
 }

@@ -9,18 +9,18 @@ enum Sender: String, Codable {
 struct ChatMessageData: Codable, Identifiable {
     let id: UUID
     let sender: Sender
-    var text: String 
+    var text: String
 }
 
 struct ChatSessionData: Codable, Identifiable {
     let id: UUID
-    var modelId: String? 
+    var modelId: String?
     var title: String
     var messages: [ChatMessageData]
     var lastModified: Date
 }
 
-struct ModelOption: Identifiable, Codable, Equatable, Hashable { 
+struct ModelOption: Identifiable, Codable, Equatable, Hashable {
     var id: String
     var name: String
     var description: String
@@ -46,8 +46,8 @@ class ChatMessageViewModel: ObservableObject, Identifiable {
     let sender: Sender
 
     @Published var text: String
-    @Published var textBlocks: [String] = [] 
-    @Published var openBlock: String = ""    
+    @Published var textBlocks: [String] = []
+    @Published var openBlock: String = ""
 
     init(id: UUID = UUID(), sender: Sender, text: String = "") {
         self.id = id
@@ -88,10 +88,10 @@ class ChatMessageViewModel: ObservableObject, Identifiable {
 
 class ChatSession: ObservableObject, Identifiable {
     let id: UUID
-    @Published var model: ModelOption? = nil 
+    @Published var model: ModelOption? = nil
     @Published var title: String
     @Published var messages: [ChatMessageViewModel]
-    @Published var lastModified: Date 
+    @Published var lastModified: Date
 
     init(id: UUID = UUID(), title: String = "New Chat", messages: [ChatMessageViewModel] = [], model: ModelOption? = nil, lastModified: Date = Date()) {
         self.id = id
@@ -112,7 +112,7 @@ class ChatSession: ObservableObject, Identifiable {
         let messageData = messages.map { $0.toData() }
         return ChatSessionData(
             id: self.id,
-            modelId: self.model?.id, 
+            modelId: self.model?.id,
             title: self.title,
             messages: messageData,
             lastModified: self.lastModified
@@ -127,21 +127,24 @@ class ChatSession: ObservableObject, Identifiable {
 }
 
 class ChatSessionsViewModel: ObservableObject {
-    @Published var chats: [ChatSession] = [] 
+    @Published var chats: [ChatSession] = []
     @Published var selectedChatID: UUID?
-    @Published var scrollToChatID: UUID? = nil 
-    @Published var refreshTrigger: Bool = false 
-    private var storageManager = ChatStorageManager() 
-    private var availableModels: [ModelOption] = [] 
+    @Published var scrollToChatID: UUID? = nil
+    @Published var refreshTrigger: Bool = false
+    private var storageManager = ChatStorageManager()
+    private var availableModels: [ModelOption] = []
 
-    init(availableModels: [ModelOption] = []) { 
+    init(availableModels: [ModelOption] = []) {
         self.availableModels = availableModels
-        loadChats() 
-        if selectedChatID == nil, let firstChat = chats.first {
-             selectedChatID = firstChat.id 
-        } else if chats.isEmpty {
 
+        Task {
+            await loadChats()
+
+            if await MainActor.run(body: { self.selectedChatID }) == nil, let firstChat = await MainActor.run(body: { self.chats.first }) {
+                await MainActor.run { self.selectedChatID = firstChat.id }
+            }
         }
+
     }
 
     func setAvailableModels(_ models: [ModelOption]) {
@@ -150,7 +153,7 @@ class ChatSessionsViewModel: ObservableObject {
         DispatchQueue.main.async {
             for chat in self.chats {
                 if let currentModelId = chat.model?.id, let newModel = models.first(where: { $0.id == currentModelId }) {
-                    if chat.model != newModel { 
+                    if chat.model != newModel {
                          chat.model = newModel
                     }
                 } else if let storedModelId = chat.toData().modelId, let matchingModel = models.first(where: { $0.id == storedModelId }) {
@@ -166,21 +169,24 @@ class ChatSessionsViewModel: ObservableObject {
         return chats.first { $0.id == id }
     }
 
-    func addNewChat() {
+    func addNewChat() async {
+        let newChat = ChatSession()
 
-        let newChat = ChatSession() 
-        DispatchQueue.main.async {
-            self.chats.insert(newChat, at: 0) 
+        await MainActor.run {
+            self.chats.insert(newChat, at: 0)
             self.selectedChatID = newChat.id
-            self.saveChat(newChat) 
-            self.sortChats() 
-            self.scrollToChatID = newChat.id 
+            self.scrollToChatID = newChat.id
         }
+
+        await saveChat(newChat)
+
     }
 
-    func deleteChat(chat: ChatSession) {
-        storageManager.deleteChat(withId: chat.id)
-        DispatchQueue.main.async {
+    func deleteChat(chat: ChatSession) async {
+
+        await storageManager.deleteChat(withId: chat.id)
+
+        await MainActor.run {
             let chatIndex = self.chats.firstIndex { $0.id == chat.id }
             self.chats.removeAll { $0.id == chat.id }
 
@@ -189,16 +195,16 @@ class ChatSessionsViewModel: ObservableObject {
                 if let index = chatIndex, index > 0, self.chats.count > index - 1 {
                     self.selectedChatID = self.chats[index - 1].id
                 } else {
-                    self.selectedChatID = self.chats.first?.id 
+                    self.selectedChatID = self.chats.first?.id
                 }
 
             }
         }
     }
 
-    func loadChats() {
-        let loadedChatsData = storageManager.loadAllChats() 
-        DispatchQueue.main.async {
+    func loadChats() async {
+        let loadedChatsData = await storageManager.loadAllChats()
+        await MainActor.run {
              self.chats = loadedChatsData.map { ChatSession(from: $0, availableModels: self.availableModels) }
 
              if self.selectedChatID == nil || !self.chats.contains(where: { $0.id == self.selectedChatID }) {
@@ -207,12 +213,12 @@ class ChatSessionsViewModel: ObservableObject {
         }
     }
 
-    func saveChat(_ chat: ChatSession) {
-        chat.touch() 
-        storageManager.saveChat(chat.toData())
+    func saveChat(_ chat: ChatSession) async {
+        chat.touch()
+        await storageManager.saveChat(chat.toData())
 
-         DispatchQueue.main.async {
-             self.sortChats()
+        await MainActor.run {
+            self.sortChats()
          }
     }
 
@@ -223,7 +229,7 @@ class ChatSessionsViewModel: ObservableObject {
          }
     }
 
-    func chatDidChange(_ chat: ChatSession) {
-        saveChat(chat)
+    func chatDidChange(_ chat: ChatSession) async {
+        await saveChat(chat)
     }
 }
