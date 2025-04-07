@@ -114,8 +114,12 @@ public class OpenAIChat {
             throw OpenAIChatError.invalidResponse
         }
         guard (200..<300).contains(http.statusCode) else {
-            let bodyText = String(data: data, encoding: .utf8) ?? "<no body>"
-            throw OpenAIChatError.apiError(statusCode: http.statusCode, body: bodyText)
+            if let apiErrorResponse = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+                throw OpenAIChatError.apiError(statusCode: http.statusCode, body: apiErrorResponse.error.message)
+            } else {
+                let bodyText = String(data: data, encoding: .utf8) ?? "<no body>"
+                throw OpenAIChatError.apiError(statusCode: http.statusCode, body: bodyText)
+            }
         }
     }
 
@@ -400,13 +404,13 @@ public enum ContentPart: Codable {
 
 public struct TextContentPart: Codable {
     public let text: String
-    public let type: String 
+    public let type: String
 }
 
 public struct ImageContentPart: Codable {
     public let imageUrl: ImageURL
     public let detail: String?
-    public let type: String 
+    public let type: String
 }
 
 public struct ImageURL: Codable {
@@ -415,28 +419,28 @@ public struct ImageURL: Codable {
 
 public struct AudioContentPart: Codable {
     public let inputAudio: AudioInput
-    public let type: String 
+    public let type: String
 }
 
 public struct AudioInput: Codable {
-    public let data: String  
-    public let format: String 
+    public let data: String
+    public let format: String
 }
 
 public struct FileContentPart: Codable {
     public let file: FileData
-    public let type: String 
+    public let type: String
 }
 
 public struct FileData: Codable {
-    public let fileData: String? 
-    public let fileId: String?   
+    public let fileData: String?
+    public let fileId: String?
     public let filename: String?
 }
 
 public struct AudioOutputParameters: Codable {
-    public let format: String 
-    public let voice: String  
+    public let format: String
+    public let voice: String
 
     public init(format: String, voice: String) {
         self.format = format
@@ -495,7 +499,7 @@ public struct StreamOptions: Codable {
 
 public struct PredictionConfig: Codable {
     public let content: PredictionContent
-    public let type: String 
+    public let type: String
 
     public init(content: PredictionContent) {
         self.content = content
@@ -714,7 +718,7 @@ public struct DeprecatedFunctionCall: Codable {
 }
 
 public struct ToolCall: Codable {
-    public let role: String  
+    public let role: String
     public let content: ContentUnion
     public let toolCallId: String
 
@@ -862,6 +866,17 @@ public enum OpenAIChatError: Error {
     case invalidResponse
     case apiError(statusCode: Int, body: String)
     case streamingParameterMissing
+}
+
+public struct APIErrorResponse: Codable {
+    public let error: APIError
+}
+
+public struct APIError: Codable {
+    public let message: String
+    public let type: String?
+    public let param: String?
+    public let code: String?
 }
 
 public struct AnyCodable: Codable {
