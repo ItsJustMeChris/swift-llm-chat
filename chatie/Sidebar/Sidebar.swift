@@ -6,23 +6,39 @@ struct SidebarView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            List(selection: $viewModel.selectedChatID) {
-
+            List {
                 Color.clear.frame(height: 0).id(topID)
 
                 ForEach(viewModel.chats) { chat in
                     ChatRow(chat: chat)
-                        .tag(chat.id as UUID?)
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(viewModel.selectedChatID == chat.id ? Color.secondary.opacity(0.2) : Color.clear)
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .onTapGesture {
+                            viewModel.selectedChatID = chat.id
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                Task {
+                                    await viewModel.deleteChat(chat: chat)
+                                }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                         .contextMenu {
                             Button("Delete Chat", role: .destructive) {
-
                                 Task {
                                     await viewModel.deleteChat(chat: chat)
                                 }
                             }
                         }
                 }
-
             }
             .listStyle(SidebarListStyle())
             .navigationTitle("All Chats")
