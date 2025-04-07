@@ -1,3 +1,4 @@
+import AppKit
 import MarkdownUI
 import Splash
 import SwiftUI
@@ -26,12 +27,12 @@ extension TextOutputFormat {
 
         mutating func addToken(_ token: String, ofType type: TokenType) {
             let color = self.theme.tokenColors[type] ?? self.theme.plainTextColor
-            self.accumulatedText.append(Text(token).foregroundColor(.init(color)))
+            self.accumulatedText.append(Text(token).foregroundColor(Color(color)))
         }
 
         mutating func addPlainText(_ text: String) {
             self.accumulatedText.append(
-                Text(text).foregroundColor(.init(self.theme.plainTextColor))
+                Text(text).foregroundColor(Color(self.theme.plainTextColor))
             )
         }
 
@@ -73,29 +74,77 @@ struct MarkdownStreamedText: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-
             Markdown(finalizedText)
+                .markdownBlockStyle(\.codeBlock) { configuration in
+                    self.codeBlock(configuration)
+                }
                 .markdownCodeSyntaxHighlighter(.splash(theme: splashTheme))
-
+            
             Text(streamingText)
-
                 .foregroundColor(Color(splashTheme.plainTextColor))
-
-                .frame(minHeight: streamingText.isEmpty ? 0 : nil) 
-                .transition(.opacity.animation(.easeInOut(duration: 0.2))) 
-
+                .frame(minHeight: streamingText.isEmpty ? 0 : nil)
+                .transition(.opacity.animation(.easeInOut(duration: 0.2)))
         }
-        .textSelection(.enabled) 
-
+        .textSelection(.enabled)
         .fixedSize(horizontal: false, vertical: true)
     }
-
+    
+    private func codeBlock(_ configuration: CodeBlockConfiguration) -> some View {
+        ZStack(alignment: .topTrailing) {
+            VStack(spacing: 0) {
+                HStack {
+                    Text(configuration.language ?? "plain text")
+                        .font(.system(.caption, design: .monospaced))
+                        .fontWeight(.semibold)
+                        .foregroundColor(Color(splashTheme.plainTextColor))
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(Color(splashTheme.backgroundColor))
+                .overlay(
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            copyToClipboard(configuration.content)
+                        }) {
+                            Image(systemName: "doc.on.doc")
+                        }
+                        .padding(.trailing, 12)
+                    }
+                )
+                
+                Divider()
+                
+                ScrollView(.horizontal) {
+                    configuration.label
+                        .relativeLineSpacing(.em(0.25))
+                        .markdownTextStyle {
+                            FontFamilyVariant(.monospaced)
+                            FontSize(.em(0.85))
+                        }
+                        .padding()
+                }
+            }
+        }
+        .background(Color(NSColor.windowBackgroundColor).opacity(0.9))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .markdownMargin(top: .zero, bottom: .em(0.8))
+    }
+    
     private var splashTheme: Splash.Theme {
         switch colorScheme {
         case .dark:
             return .wwdc17(withFont: .init(size: 16))
         default:
             return .sunset(withFont: .init(size: 16))
+        }
+    }
+    
+    private func copyToClipboard(_ string: String) {
+        if let pasteboard = NSPasteboard.general as NSPasteboard? {
+            pasteboard.clearContents()
+            pasteboard.setString(string, forType: .string)
         }
     }
 }
@@ -118,7 +167,7 @@ struct ChatBubble: View {
             } else {
                 Spacer(minLength: 0)
                 Text(message.text)
-                    .textSelection(.enabled) 
+                    .textSelection(.enabled)
                     .padding(12)
                     .background(Color(NSColor.windowBackgroundColor).opacity(0.9).brightness(0.08))
                     .cornerRadius(12)

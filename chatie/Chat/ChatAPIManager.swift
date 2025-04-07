@@ -70,26 +70,32 @@ func streamChatName(for chatSession: ChatSession) async throws -> AsyncThrowingS
         Task {
             do {
                 var titleText = ""
+
                 for try await chunk in streamChunks {
-                    if let choice = chunk.choices?.first, let finishReason = choice.finishReason, !finishReason.isEmpty {
-                        if let delta = choice.delta, let content = delta.content, !content.isEmpty {
+                    if let choice = chunk.choices?.first {
+                        if let finishReason = choice.finishReason, !finishReason.isEmpty {
+                            if let delta = choice.delta, let content = delta.content, !content.isEmpty {
+                                titleText += content
+                                let currentTitle = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                await MainActor.run {
+                                    chatSession.title = currentTitle
+                                }
+                                continuation.yield(content)
+                            }
+                            break
+                        }
+
+                        if let content = choice.delta?.content {
                             titleText += content
-                            Task { @MainActor in
-                                chatSession.title = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let currentTitle = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
+                            await MainActor.run {
+                                chatSession.title = currentTitle
                             }
                             continuation.yield(content)
                         }
-                        break
-                    }
-                    if let delta = chunk.choices?.first?.delta,
-                       let content = delta.content {
-                        titleText += content
-                        Task { @MainActor in
-                            chatSession.title = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
-                        }
-                        continuation.yield(content)
                     }
                 }
+
                 continuation.finish()
             } catch {
                 continuation.finish(throwing: error)
