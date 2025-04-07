@@ -1,59 +1,59 @@
 import SwiftUI
 
 struct RootView: View {
-
     @EnvironmentObject var chatSessionsViewModel: ChatSessionsViewModel
     @EnvironmentObject var modelManager: ModelManager
 
     var body: some View {
-
-        let currentDefaultModel = modelManager.getDefaultModel() ?? ModelOption(id: "error/no-models", name: "Error", description: "No models configured")
+        let currentDefaultModel = modelManager.getDefaultModel() ??
+            ModelOption(id: "error/no-models", name: "Error", description: "No models configured")
 
         NavigationSplitView {
-
             SidebarView()
-
                 .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 300)
         } detail: {
             NavigationStack {
 
-                if let selectedChat = chatSessionsViewModel.selectedChat() {
-
-                    ChatView(chatSession: selectedChat)
-
-                        .id(selectedChat.id)
-                        .toolbar {
-                            ToolbarItem(placement: .navigation) {
-
-                                CustomModelPickerButton(
-                                    selectedModel: Binding<ModelOption>(
-
-                                        get: { selectedChat.model ?? currentDefaultModel },
-                                        set: { newModel in
-                                            if selectedChat.model != newModel {
-                                                selectedChat.model = newModel
-
-                                                Task {
-                                                    await chatSessionsViewModel.chatDidChange(selectedChat)
-                                                }
-                                            }
-                                        }
-                                    ),
-
-                                    options: modelManager.models
-                                )
-                            }
-                        }
+                if chatSessionsViewModel.isLoading {
+                    VStack {
+                        ProgressView()
+                        Text("Loading Chats...")
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
 
-                    ContentArea(chatSessionsViewModel: chatSessionsViewModel)
+                    if let selectedChat = chatSessionsViewModel.selectedChat() {
+                        ChatView(chatSession: selectedChat)
+                            .id(AnyHashable(selectedChat.id))
+                            .toolbar {
+                                ToolbarItem(placement: .navigation) {
+                                    CustomModelPickerButton(
+                                        selectedModel: Binding<ModelOption>(
+                                            get: { selectedChat.model ?? currentDefaultModel },
+                                            set: { newModel in
+                                                if selectedChat.model != newModel {
+                                                    selectedChat.model = newModel
+                                                    Task {
+                                                        await chatSessionsViewModel.chatDidChange(selectedChat)
+                                                    }
+                                                }
+                                            }
+                                        ),
+                                        options: modelManager.models
+                                    )
+                                }
+                            }
+                    } else {
+
+                        ContentArea(chatSessionsViewModel: chatSessionsViewModel)
+                    }
                 }
             }
             .navigationTitle("")
         }
-
         .onChange(of: modelManager.models) { newModels in
-
             DispatchQueue.main.async {
                 chatSessionsViewModel.setAvailableModels(newModels)
             }
@@ -62,7 +62,6 @@ struct RootView: View {
 }
 
 struct ContentArea: View {
-
     @ObservedObject var chatSessionsViewModel: ChatSessionsViewModel
 
     var body: some View {
@@ -71,7 +70,6 @@ struct ContentArea: View {
                 .font(.title)
                 .foregroundColor(.secondary)
             Button("Create New Chat") {
-
                 Task {
                     await chatSessionsViewModel.addNewChat()
                 }
@@ -127,7 +125,7 @@ struct CustomModelPickerButton: View {
             CustomModelPickerPopover(
                 selectedModel: $selectedModel,
                 options: options,
-                isOpen: $isOpen,
+                isOpen: $isOpen
             )
             .frame(width: 300)
             .frame(maxHeight: 300)
@@ -151,7 +149,6 @@ struct CustomModelPickerPopover: View {
             ScrollView {
                 VStack(spacing: 6) {
                     ForEach(options) { option in
-
                         Button {
                             selectedModel = option
                             isOpen = false
@@ -161,9 +158,7 @@ struct CustomModelPickerPopover: View {
                                     HStack(spacing: 6) {
                                         Text(option.name)
                                             .fontWeight(.semibold)
-
                                             .foregroundColor(.primary)
-
                                         if let badge = option.badge {
                                             Text(badge.uppercased())
                                                 .font(.caption2)
@@ -174,14 +169,11 @@ struct CustomModelPickerPopover: View {
                                                 .foregroundColor(.gray)
                                         }
                                     }
-
                                     Text(option.description)
                                         .font(.footnote)
                                         .foregroundColor(.secondary)
                                 }
-
                                 Spacer()
-
                                 if selectedModel == option {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.accentColor)
@@ -194,7 +186,6 @@ struct CustomModelPickerPopover: View {
                                     .fill(option == selectedModel ? Color.accentColor.opacity(0.1) : Color.clear)
                             )
                         }
-
                         .buttonStyle(.plain)
                     }
                 }
